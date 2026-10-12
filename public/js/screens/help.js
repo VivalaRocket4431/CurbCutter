@@ -1,53 +1,64 @@
-import { h, icon } from '../ui/dom.js';
-import { pageHead, contactCard, choiceGroup } from '../ui/components.js';
+import { h, icon, uid } from '../ui/dom.js';
+import { pageHead, contactCard, fold } from '../ui/components.js';
 import { METROS, STATEWIDE, CHECKED, localFor, metroName } from '../data/contacts.js';
 import { getSettings, saveSettings } from '../lib/settings.js';
 import { longDate } from '../lib/dates.js';
 import { APP } from '../config.js';
 
-function section(id, title, intro, ...cards) {
+// One closed section per need. People open only the one they came for.
+function need(title, sub, cards) {
   const items = cards.flat().filter(Boolean);
   if (!items.length) return null;
-  return h('section', { class: 'block', 'aria-labelledby': `h-${id}` },
-    h('h2', { id: `h-${id}` }, title),
-    intro ? h('p', { class: 'hint' }, intro) : null,
-    h('div', { class: 'contact-list' }, items),
-  );
+  return fold({ title, sub }, h('div', { class: 'contact-list' }, items));
 }
 
 export async function renderHelp(params, ctx) {
   const metro = params.metro && METROS.some((m) => m.id === params.metro) ? params.metro : getSettings().metro || 'dfw';
   const local = localFor(metro);
+  const card = (c) => contactCard(c, { headingLevel: 3 });
 
-  const picker = choiceGroup({
-    name: 'help-metro', legend: 'Show contacts for', columns: 2,
-    options: METROS.map((m) => ({ value: m.id, label: m.name })),
-    value: metro,
-    onChange: (v) => { saveSettings({ metro: v }); ctx.navigate(`#/help/${v}`, { replace: true }); },
+  const selectId = uid('area');
+  const select = h('select', { id: selectId, class: 'select' },
+    METROS.map((m) => h('option', { value: m.id, selected: m.id === metro ? true : null }, m.name)));
+  select.addEventListener('change', () => {
+    saveSettings({ metro: select.value });
+    ctx.navigate(`#/help/${select.value}`, { replace: true });
   });
 
-  const cityCards = (key, nameFn) => local.cities.map((city) => contactCard({ name: nameFn(city), ...city[key] }));
+  const cityCards = (key, nameFn) => local.cities.map((city) => card({ name: nameFn(city), ...city[key] }));
+  const here = local.cities.length ? metroName(metro) : 'Texas';
 
   const node = h('div', { class: 'screen help' },
-    pageHead({ title: 'Get help', lede: 'People and agencies that can help, checked by hand. Tap a phone number to call.' }),
-    picker,
-    section('advice', 'Free ADA advice', 'For you, or to share with the business.', STATEWIDE.advice.map((c) => contactCard(c))),
-    section('report', `Report illegal parking or a city problem${local.cities.length ? ` (${metroName(metro)})` : ''}`, 'For a car parked illegally right now, or a broken public sidewalk or curb ramp.',
-      cityCards('report', (c) => `${c.name} 311`),
-      local.volunteer ? contactCard(local.volunteer) : null),
-    section('city-ada', 'City disability offices', 'For city sidewalks, curb ramps, and city buildings.', local.cities.map((city) => contactCard(city.ada))),
-    section('council', 'Your city council member', 'Council offices can press businesses and city departments to act.', cityCards('council', (c) => c.name)),
-    section('owner', 'Find who owns a property', 'The parking lot owner is often not the store. Search by street address.',
-      local.counties.map((k) => contactCard({ name: k.cad, what: k.name, url: k.url, urlLabel: 'Property search' })),
-      contactCard(STATEWIDE.directories[1])),
-    section('complaints', 'Official complaints', 'Agencies that can require a fix. CurbCutter prepares the text for both forms from your case.', STATEWIDE.complaints.map((c) => contactCard(c))),
-    section('legal', 'Legal help', null, STATEWIDE.legal.map((c) => contactCard(c))),
-    section('cils', 'Independent living centers', 'Disability-led centers that help people advocate.', local.cils.map((c) => contactCard({ ...c, what: 'Center for Independent Living' })), contactCard(STATEWIDE.directories[0])),
-    section('news', 'Local news', 'After you have given the business a fair chance.', local.news.map((c) => contactCard(c)), STATEWIDE.news.map((c) => contactCard(c))),
+    h('p', { class: 'back' }, h('a', { href: '#/rights' }, icon('left', { size: 18 }), 'Rights & help')),
+    pageHead({ title: 'Who can help', lede: 'Open what you need. Tap a phone number to call.' }),
+    h('div', { class: 'area-pick' },
+      h('label', { for: selectId, class: 'label' }, 'Your area'),
+      select,
+    ),
+    h('div', { class: 'folds' },
+      need('Report illegal parking or a broken sidewalk', `311 and parking enforcement in ${here}.`, [
+        cityCards('report', (c) => `${c.name} 311`),
+        local.volunteer ? card(local.volunteer) : null,
+      ]),
+      need('Free ADA advice', 'For you, or to share with the business.', STATEWIDE.advice.map(card)),
+      need('Find who owns a property', 'The parking lot owner is often not the store.', [
+        local.counties.map((k) => card({ name: k.cad, what: k.name, url: k.url, urlLabel: 'Property search' })),
+        card(STATEWIDE.directories[1]),
+      ]),
+      need('File an official complaint', 'State and federal agencies that can require a fix.', STATEWIDE.complaints.map(card)),
+      need('City disability office', 'For city sidewalks, curb ramps, and city buildings.', local.cities.map((city) => card(city.ada))),
+      need('Your city council member', 'Council offices can press businesses and city departments.', cityCards('council', (c) => c.name)),
+      need('Independent living centers', 'Disability-led centers that help people advocate.', [
+        local.cils.map((c) => card({ ...c, what: 'Center for Independent Living' })),
+        card(STATEWIDE.directories[0]),
+      ]),
+      need('Free legal help', 'If asking and complaints haven\'t worked.', STATEWIDE.legal.map(card)),
+      need('Local news', 'After the business has had a fair chance.', [local.news.map(card), STATEWIDE.news.map(card)]),
+    ),
     h('p', { class: 'fine' },
       icon('check', { size: 16 }), ` Checked by hand on ${longDate(CHECKED)}. `,
       APP.feedbackEmail ? h('a', { href: `mailto:${APP.feedbackEmail}?subject=${encodeURIComponent('CurbCutter: a contact needs updating')}` }, 'Report a wrong number or link') : 'Numbers change. If one is wrong, search the organization\'s name.',
     ),
   );
-  return { title: 'Get help', node };
+  return { title: 'Who can help', node };
 }

@@ -110,7 +110,7 @@ test('the app bar fits on small phones at every text size', async ({ page }) => 
 test('route changes move focus to the new heading', async ({ page }) => {
   await seed(page);
   await page.goto('/');
-  await page.getByRole('link', { name: 'Rights' }).click();
+  await page.getByRole('link', { name: 'Rights & help', exact: true }).click();
   await expect(page.locator('h1')).toBeFocused();
-  await expect(page).toHaveTitle('Know your rights | CurbCutter');
+  await expect(page).toHaveTitle('Rights & help | CurbCutter');
 });

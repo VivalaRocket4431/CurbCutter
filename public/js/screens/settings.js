@@ -1,5 +1,5 @@
 import { h, icon, uid } from '../ui/dom.js';
-import { pageHead, choiceGroup, button, confirmButton, toast, notice } from '../ui/components.js';
+import { pageHead, choiceGroup, button, confirmButton, toast, notice, fold, rowLink } from '../ui/components.js';
 import { getSettings, saveSettings, resetSettings } from '../lib/settings.js';
 import { exportAll, importAll, clearAll, isSaving, requestPersistence } from '../lib/store.js';
 import { downloadText } from '../lib/share.js';
@@ -20,29 +20,29 @@ export async function renderSettings(params, ctx) {
   try { persisted = !!(await navigator.storage?.persisted?.()); } catch (e) { persisted = false; }
 
   const display = h('section', { class: 'block', 'aria-labelledby': 'disp-h' },
-    h('h2', { id: 'disp-h' }, 'Display and reading'),
+    h('h2', { id: 'disp-h', class: 'vh' }, 'Display and reading'),
     choiceGroup({
-      name: 'text-size', legend: 'Text size', columns: 3,
+      name: 'text-size', legend: 'Text size', variant: 'segmented',
       options: [{ value: 'm', label: 'Standard' }, { value: 'l', label: 'Large' }, { value: 'xl', label: 'Extra large' }],
       value: s.textSize, onChange: (v) => saveSettings({ textSize: v }),
     }),
     choiceGroup({
-      name: 'theme', legend: 'Colors', columns: 3,
+      name: 'theme', legend: 'Colors', variant: 'segmented',
       options: [{ value: 'system', label: 'Match my phone' }, { value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }],
       value: s.theme, onChange: (v) => saveSettings({ theme: v }),
     }),
     checkbox({ id: 'set-contrast', label: 'High contrast', hint: 'Black and white, with thicker outlines.', checked: s.contrast === 'high', onChange: (on) => saveSettings({ contrast: on ? 'high' : 'normal' }) }),
     checkbox({ id: 'set-motion', label: 'Reduce motion', hint: 'Turns off animations.', checked: s.motion === 'reduce', onChange: (on) => saveSettings({ motion: on ? 'reduce' : 'system' }) }),
     speechSupported() ? choiceGroup({
-      name: 'speech-rate', legend: 'Read-aloud speed', columns: 3,
+      name: 'speech-rate', legend: 'Read-aloud speed', variant: 'segmented',
       options: [{ value: 0.8, label: 'Slower' }, { value: 1, label: 'Normal' }, { value: 1.2, label: 'Faster' }],
       value: s.speechRate,
       onChange: (v) => { saveSettings({ speechRate: Number(v) }); speak('This is how fast I will read.', Number(v)); },
     }) : null,
+    button({ label: 'Reset display settings', iconName: 'left', variant: 'quiet', onClick: () => { resetSettings(); toast('Display settings reset.'); ctx.refresh(); } }),
   );
 
-  const profile = h('section', { class: 'block', 'aria-labelledby': 'prof-h' },
-    h('h2', { id: 'prof-h' }, 'Your info for letters'),
+  const profile = fold({ title: 'Your info for letters', sub: 'Your name and how businesses can reach you.' },
     h('p', { class: 'hint' }, 'Saved only on this phone. It appears at the end of your letters.'),
     ...profileFields(),
   );
@@ -64,8 +64,7 @@ export async function renderSettings(params, ctx) {
     }
   });
 
-  const data = h('section', { class: 'block', 'aria-labelledby': 'data-h' },
-    h('h2', { id: 'data-h' }, 'Your data'),
+  const data = fold({ title: 'Backup or start over', sub: 'Keep a copy of your reports, or delete them.' },
     saving
       ? notice({ tone: 'good', title: 'Saved on this device', body: persisted ? 'Your browser has agreed to keep CurbCutter\'s data even when space is low.' : 'Tip: installing CurbCutter to your Home Screen helps keep your reports safe. A backup is the safest.' })
       : notice({ tone: 'bad', title: 'This browser is not saving', body: 'Your reports will be lost when you close this page. Download a backup now.' }),
@@ -89,16 +88,13 @@ export async function renderSettings(params, ctx) {
       confirmLabel: 'Delete everything',
       onConfirm: async () => { await clearAll(); toast('Everything was deleted.'); ctx.navigate('#/'); },
     }),
-    button({ label: 'Reset display settings', iconName: 'left', variant: 'quiet', onClick: () => { resetSettings(); toast('Display settings reset.'); ctx.refresh(); } }),
   );
 
-  const about = h('section', { class: 'block' },
-    h('a', { href: '#/about', class: 'article-card' },
-      h('span', { class: 'article-title' }, 'About CurbCutter, privacy, and sources'),
-      h('span', { class: 'article-sum' }, 'How the information is checked, and what stays on your phone.'),
-      icon('right', { size: 18 }),
-    ),
+  const about = h('ul', { class: 'row-list' },
+    h('li', null, rowLink({ href: '#/about', title: 'About CurbCutter', sub: 'How the information is checked, and its sources.' })),
+    h('li', null, rowLink({ href: 'privacy/', title: 'Privacy policy', attrs: { 'data-needs-app': '' } })),
+    h('li', null, rowLink({ href: 'support/', title: 'Support and questions', attrs: { 'data-needs-app': '' } })),
   );
 
-  return { title: 'Settings', node: h('div', { class: 'screen settings' }, pageHead({ title: 'Settings' }), display, profile, data, about) };
+  return { title: 'Settings', node: h('div', { class: 'screen settings' }, pageHead({ title: 'Settings' }), display, h('div', { class: 'folds' }, profile, data), about) };
 }

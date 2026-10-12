@@ -34,11 +34,10 @@ const ROUTES = [
   [/^\/about$/, () => renderAbout],
 ];
 
+// Three places only: your reports, rights and contacts, and settings.
 const TABS = [
-  { href: '#/', label: 'Home', icon: 'home', match: (p) => p === '/' || p === '' },
-  { href: '#/cases', label: 'My cases', icon: 'cases', match: (p) => p.startsWith('/cases') || p.startsWith('/case/') || p === '/new' },
-  { href: '#/rights', label: 'Rights', icon: 'book', match: (p) => p.startsWith('/rights') },
-  { href: '#/help', label: 'Get help', icon: 'people', match: (p) => p.startsWith('/help') },
+  { href: '#/', label: 'Home', icon: 'home', match: (p) => p === '/' || p === '' || p.startsWith('/cases') || p.startsWith('/case/') || p === '/new' },
+  { href: '#/rights', label: 'Rights & help', icon: 'book', match: (p) => p.startsWith('/rights') || p.startsWith('/help') },
   { href: '#/settings', label: 'Settings', icon: 'settings', match: (p) => p.startsWith('/settings') || p.startsWith('/about') },
 ];
 

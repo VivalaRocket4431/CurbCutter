@@ -1,11 +1,10 @@
 import { h, icon } from '../ui/dom.js';
-import { button, statusChip } from '../ui/components.js';
+import { button, statusChip, fold } from '../ui/components.js';
 import { listCases } from '../lib/store.js';
-import { nextStep, statusLabel } from '../lib/ladder.js';
+import { nextStep, statusLabel, has } from '../lib/ladder.js';
 import { caseTitle, caseSubtitle } from '../lib/letters.js';
-import { shortDate, todayISO, longDate } from '../lib/dates.js';
+import { shortDate, todayISO } from '../lib/dates.js';
 import { getSettings, saveSettings } from '../lib/settings.js';
-import { CONTENT_CHECKED } from '../data/sources.js';
 import { stepLabel } from './wizard.js';
 
 export function caseCard(c) {
@@ -28,11 +27,12 @@ export function caseCard(c) {
   );
 }
 
-function installCard(ctx) {
+function installFold(ctx) {
   const s = getSettings();
   if (ctx.isStandalone() || s.installDismissed) return null;
   const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  const dismiss = button({ label: 'Not now', variant: 'quiet', onClick: () => { saveSettings({ installDismissed: true }); card.remove(); } });
+  let node = null;
+  const dismiss = button({ label: 'Not now', variant: 'quiet', onClick: () => { saveSettings({ installDismissed: true }); node?.remove(); } });
   let body;
   if (ctx.installPrompt) {
     const install = button({ label: 'Install CurbCutter', variant: 'primary', iconName: 'download' });
@@ -41,49 +41,51 @@ function installCard(ctx) {
       ctx.clearInstallPrompt();
       p.prompt();
       try { await p.userChoice; } catch (e) { /* ignore */ }
-      card.remove();
+      node?.remove();
     });
-    body = [h('p', null, 'Install CurbCutter so it opens like an app, works without signal, and keeps your reports safe.'), h('div', { class: 'btn-row' }, install, dismiss)];
+    body = [h('div', { class: 'btn-row' }, install, dismiss)];
   } else if (ios) {
     body = [
-      h('p', null, 'Add CurbCutter to your Home Screen so it opens like an app and keeps your reports safe:'),
       h('ol', { class: 'steps-list' },
-        h('li', null, 'Tap the Share button (a square with an arrow pointing up) in Safari.'),
-        h('li', null, 'Tap "Add to Home Screen."'),
-        h('li', null, 'Tap "Add."'),
+        h('li', null, 'In Safari, tap the Share button (a square with an arrow pointing up).'),
+        h('li', null, 'Tap "Add to Home Screen," then "Add."'),
       ),
-      h('div', { class: 'btn-row' }, dismiss),
+      dismiss,
     ];
   } else {
-    body = [
-      h('p', null, 'Add CurbCutter to your Home Screen: open your browser menu and choose "Install app" or "Add to Home screen."'),
-      h('div', { class: 'btn-row' }, dismiss),
-    ];
+    body = [h('p', null, 'Open your browser menu and choose "Install app" or "Add to Home screen."'), dismiss];
   }
-  const card = h('section', { class: 'panel install', 'aria-labelledby': 'install-h' },
-    h('h2', { id: 'install-h', class: 'panel-title' }, icon('download'), 'Keep CurbCutter on your phone'),
-    ...body,
-  );
-  return card;
+  node = fold({ title: 'Put CurbCutter on your Home Screen', sub: 'It opens like an app and works with no signal.', className: 'install-fold' }, ...body);
+  return node;
+}
+
+// Reports that need the person come first: unsent requests and follow-ups that are due.
+function sortOpen(cases, today) {
+  const needsYou = (c) => !has(c, 'asked') || (c.nextCheck && c.nextCheck <= today);
+  return [...cases].sort((a, b) => {
+    const na = needsYou(a) ? 0 : 1;
+    const nb = needsYou(b) ? 0 : 1;
+    if (na !== nb) return na - nb;
+    return (a.nextCheck || '9999') < (b.nextCheck || '9999') ? -1 : 1;
+  });
 }
 
 export async function renderHome(params, ctx) {
   const cases = await listCases();
   const today = todayISO();
   const drafts = cases.filter((c) => c.status === 'draft');
-  const due = cases.filter((c) => c.status === 'open' && c.nextCheck && c.nextCheck <= today);
-  const recent = cases.filter((c) => c.status !== 'draft' && !due.includes(c)).slice(0, 3);
+  const open = sortOpen(cases.filter((c) => c.status === 'open'), today);
+  const finished = cases.filter((c) => c.status === 'resolved' || c.status === 'closed');
   const fixedCount = cases.filter((c) => c.status === 'resolved').length;
 
-  const hero = h('section', { class: 'hero' },
-    h('div', { class: 'hero-lane', 'aria-hidden': 'true' }),
-    h('p', { class: 'eyebrow' }, 'Texas accessibility advocacy'),
-    h('h1', { id: 'page-title', tabindex: '-1' }, 'Speak up for access.'),
-    h('p', { class: 'lede' }, 'Document a barrier at a business, ask for the fix, and follow it until it\'s done. Free, private, and saved on your phone.'),
-    button({ label: 'Report a barrier', href: '#/new', variant: 'primary', iconName: 'plus', block: true, attrs: { 'data-testid': 'start-report' } }),
-  );
-
-  const sections = [hero];
+  const sections = [
+    h('section', { class: 'hero' },
+      h('div', { class: 'hero-lane', 'aria-hidden': 'true' }),
+      h('h1', { id: 'page-title', tabindex: '-1' }, 'Speak up for access.'),
+      h('p', { class: 'lede' }, 'Report a barrier at a Texas business and ask for the fix. Free, and private to your phone.'),
+      button({ label: 'Report a barrier', href: '#/new', variant: 'primary', iconName: 'plus', block: true, attrs: { 'data-testid': 'start-report' } }),
+    ),
+  ];
 
   if (drafts.length) {
     sections.push(h('section', { class: 'block', 'aria-labelledby': 'drafts-h' },
@@ -92,44 +94,34 @@ export async function renderHome(params, ctx) {
     ));
   }
 
-  if (due.length) {
-    sections.push(h('section', { class: 'block', 'aria-labelledby': 'due-h' },
-      h('h2', { id: 'due-h' }, 'Follow-ups due'),
-      h('ul', { class: 'case-list' }, due.map(caseCard)),
-    ));
-  }
-
-  if (recent.length) {
-    sections.push(h('section', { class: 'block', 'aria-labelledby': 'recent-h' },
-      h('div', { class: 'block-head' },
-        h('h2', { id: 'recent-h' }, 'Your cases'),
-        h('a', { href: '#/cases', class: 'more' }, `See all ${cases.length - drafts.length}`),
-      ),
+  if (open.length) {
+    sections.push(h('section', { class: 'block', 'aria-labelledby': 'open-h' },
+      h('h2', { id: 'open-h' }, 'Your reports'),
       fixedCount ? h('p', { class: 'wins' }, icon('star', { size: 20 }), `${fixedCount} ${fixedCount === 1 ? 'barrier' : 'barriers'} fixed so far.`) : null,
-      h('ul', { class: 'case-list' }, recent.map(caseCard)),
+      h('ul', { class: 'case-list' }, open.map(caseCard)),
     ));
   }
 
-  const install = installCard(ctx);
+  if (finished.length) {
+    sections.push(fold({ title: `Fixed or closed (${finished.length})`, sub: open.length ? null : `${fixedCount} ${fixedCount === 1 ? 'barrier' : 'barriers'} fixed so far.` },
+      h('ul', { class: 'case-list' }, finished.map(caseCard))));
+  }
+
+  if (!cases.length) {
+    sections.push(h('section', { class: 'block', 'aria-labelledby': 'how-h' },
+      h('p', { class: 'empty-title' }, 'No reports yet'),
+      h('h2', { id: 'how-h', class: 'vh' }, 'How CurbCutter works'),
+      h('ol', { class: 'how-steps' },
+        h('li', null, h('span', null, h('strong', null, 'Document it. '), 'Where it is, what\'s wrong, and a photo.')),
+        h('li', null, h('span', null, h('strong', null, 'Ask for the fix. '), 'CurbCutter drafts a polite letter. You read it, change any words, and send it.')),
+        h('li', null, h('span', null, h('strong', null, 'Follow up. '), 'Reminders and a dated record of every step.')),
+        h('li', null, h('span', null, h('strong', null, 'Escalate if needed. '), 'The owner, the state, the city, or local news.')),
+      ),
+    ));
+  }
+
+  const install = installFold(ctx);
   if (install) sections.push(install);
-
-  sections.push(h('section', { class: 'block how', 'aria-labelledby': 'how-h' },
-    h('h2', { id: 'how-h' }, 'How CurbCutter works'),
-    h('ol', { class: 'how-steps' },
-      h('li', null, h('span', null, h('strong', null, 'Document it. '), 'Where, what\'s wrong, and photos. CurbCutter checks the parking math for you.')),
-      h('li', null, h('span', null, h('strong', null, 'Ask for the fix. '), 'CurbCutter drafts a polite letter from your report. You read it, change any words you want, and send it in your own name.')),
-      h('li', null, h('span', null, h('strong', null, 'Follow up. '), 'Reminders on your calendar, and a record of every date.')),
-      h('li', null, h('span', null, h('strong', null, 'Escalate if needed. '), 'The property owner, state and federal complaints, your council member, and local news.')),
-    ),
-  ));
-
-  sections.push(h('section', { class: 'trust' },
-    icon('scale'),
-    h('p', null,
-      'Every rule in CurbCutter links to its official source. Checked ', h('strong', null, longDate(CONTENT_CHECKED)), '. ',
-      h('a', { href: '#/about' }, 'How we keep it accurate'),
-    ),
-  ));
 
   return { title: 'Home', node: h('div', { class: 'screen home' }, ...sections) };
 }

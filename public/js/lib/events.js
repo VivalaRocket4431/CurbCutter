@@ -17,7 +17,7 @@ export const EVENT_TYPES = {
   media_contacted: { label: 'I contacted local news', past: 'Contacted local news', noteLabel: 'Which newsroom?' },
   fixed: { label: 'It\'s fixed', past: 'Fixed', noteLabel: 'What did they fix?', noteHint: 'For example: added a van-accessible space with a new sign.' },
   thanked: { label: 'I thanked them', past: 'Thanked the business' },
-  note: { label: 'Add an update', past: 'Update', noteLabel: 'What happened?' },
+  note: { label: 'Add a note', past: 'Update', noteLabel: 'What happened?' },
 };
 
 // Which event a letter creates when the user says "I sent it".

@@ -205,7 +205,7 @@ export function nextStep(c, today = todayISO()) {
     title: 'Keep the record going',
     detail: 'Add updates as they happen. If it gets fixed, mark it fixed and celebrate.',
     actions: [
-      { kind: 'event', type: 'note', label: 'Add an update' },
+      { kind: 'event', type: 'note', label: 'Add a note' },
       { kind: 'event', type: 'fixed', label: 'It\'s fixed' },
     ],
   };

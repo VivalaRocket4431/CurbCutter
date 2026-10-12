@@ -30,7 +30,6 @@ test('report a parking barrier, send the request, and record it', async ({ page 
   await page.getByText('Not enough accessible parking spaces').click();
   await page.getByText('No van-accessible space').click();
   await page.getByText('Missing, faded, or too-low signs').click();
-  await expect(page.locator('.picked')).toContainText('You picked 3');
   await next(page);
 
   await expect(h1(page)).toHaveText('Count the parking');
@@ -133,7 +132,8 @@ test('owner letter shows where to look up the property owner', async ({ page }) 
 test('marking it fixed celebrates and suggests a thank-you', async ({ page }) => {
   await seed(page);
   await page.goto(`/#/case/${SAMPLE_CASE.id}`);
-  await page.getByRole('button', { name: 'It\'s fixed' }).first().click();
+  await page.getByText('Add an update', { exact: true }).click();
+  await page.getByRole('button', { name: 'It\'s fixed' }).click();
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.locator('.next-title')).toHaveText('Say thank you');
   await expect(page.locator('.chip').first()).toHaveText('Fixed');
@@ -154,6 +154,7 @@ test('settings change text size and colors', async ({ page }) => {
 test('backup downloads and restores every case', async ({ page }) => {
   await seed(page);
   await page.goto('/#/settings');
+  await page.getByText('Backup or start over').click();
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('button', { name: 'Download a backup' }).click(),
@@ -165,6 +166,7 @@ test('backup downloads and restores every case', async ({ page }) => {
   await page.goto('/#/cases');
   await expect(page.getByText('No reports yet')).toBeVisible();
   await page.goto('/#/settings');
+  await page.getByText('Backup or start over').click();
   await page.locator('input[type=file][accept*="json"]').setInputFiles(file);
   await expect(page.locator('.toast', { hasText: 'Backup restored: 1 added' })).toBeVisible();
   await page.goto('/#/cases');
@@ -211,13 +213,36 @@ test('photos can be saved to the phone from the case and the letter', async ({ p
   await page.getByText('Spaces or aisles are often blocked').click();
   await next(page); // details
   await next(page); // photos
-  await expect(page.locator('.notice')).toContainText('don\'t go into your phone\'s photo library');
+  await expect(page.locator('.photo-note')).toContainText('don\'t go into your phone\'s photo library');
   await page.locator('input[type=file][multiple]').setInputFiles(PHOTO);
   await expect(page.locator('.photo-grid img')).toHaveCount(1);
   for (let i = 0; i < 4; i += 1) await next(page);
   await page.getByTestId('wizard-next').click(); // save on review
+  await page.getByText('Your report', { exact: true }).click();
   await expect(page.getByRole('button', { name: 'Save the photo to my phone' })).toBeVisible();
   await page.getByRole('link', { name: 'Read your letter' }).click();
   await expect(page.locator('.photo-help')).toContainText('Email links can\'t carry photos');
+  await page.getByText('More ways', { exact: true }).click();
   await expect(page.getByRole('button', { name: 'Save the photo to my phone' })).toBeVisible();
+});
+
+test('picking a problem clears the error at once, and Next works on the first tap', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('start-report').tap();
+  await page.getByLabel('Business or place name').fill('Tap Test Diner');
+  await page.getByTestId('wizard-next').tap();
+  await expect(h1(page)).toHaveText('What\'s the problem?');
+
+  // Nothing on this screen looks picked until the person picks a problem.
+  await expect(page.locator('.choice-input:checked')).toHaveCount(0);
+  await page.getByTestId('wizard-next').tap();
+  await expect(page.locator('.error-summary')).toContainText('Pick at least one problem.');
+
+  await page.getByText('Door is too heavy to open').tap();
+  await expect(page.locator('.error-summary')).toHaveCount(0);
+  await expect(page.locator('.error-text')).toHaveCount(0);
+  await page.getByText('Counter is too high').tap();
+  await page.getByTestId('wizard-next').tap();
+  await expect(h1(page)).toHaveText('Add details');
+  await expect(page.locator('.detail-block h2')).toHaveText(['Door is too heavy to open', 'Counter is too high']);
 });

@@ -2,7 +2,7 @@
 // Nothing is ever sent automatically. The person always has the last word.
 
 import { h, icon } from '../ui/dom.js';
-import { button, field, textInput, textArea, choiceGroup, toast, copyButton, contactCard, notice, externalLink, sourceList } from '../ui/components.js';
+import { button, field, textInput, textArea, choiceGroup, toast, copyButton, contactCard, notice, externalLink, sourceList, fold } from '../ui/components.js';
 import { eventRecorder } from '../ui/recorder.js';
 import { savePhotosButton, casePhotoFiles } from '../ui/photos.js';
 import { getCase, putCase } from '../lib/store.js';
@@ -27,8 +27,8 @@ const STEP2_TITLE = {
 };
 
 const STEP2_INTRO = {
-  tdlr: 'When the summary says what you want, open the form and paste it in. Nothing is filed until you submit the form yourself.',
-  doj: 'When the summary says what you want, open the form and paste it in. Nothing is filed until you submit the form yourself.',
+  tdlr: 'Copy the summary, open the form, and paste it in. Nothing is filed until you submit the form yourself.',
+  doj: 'Copy the summary, open the form, and paste it in. Nothing is filed until you submit the form yourself.',
   script: 'Talk to a manager if you can. If talking is hard, show this on your screen instead.',
   summary: 'Share it with anyone helping you, like an ADA center, an independent living center, or a lawyer.',
 };
@@ -128,7 +128,7 @@ export async function renderLetter(params, ctx) {
   const c = await getCase(params.id);
   const meta = LETTER_KINDS[params.kind];
   if (!c || !meta) {
-    return { title: 'Not found', node: h('section', { class: 'screen' }, h('h1', { id: 'page-title', tabindex: '-1' }, 'We could not find that letter'), button({ label: 'Go to My cases', href: '#/cases', variant: 'primary' })) };
+    return { title: 'Not found', node: h('section', { class: 'screen' }, h('h1', { id: 'page-title', tabindex: '-1' }, 'We could not find that letter'), button({ label: 'Go to Home', href: '#/', variant: 'primary' })) };
   }
   const kind = params.kind;
   const isForm = FORMS.has(kind);
@@ -155,7 +155,7 @@ export async function renderLetter(params, ctx) {
   const bodyHost = h('div', { class: 'letter-body' });
   const countHost = h('p', { class: 'count', 'aria-live': 'polite' });
   const card = h('article', { class: 'letter', 'aria-label': `Your ${noun}` }, subjectHost, bodyHost, countHost);
-  const reviewHost = h('div', { class: 'review-tools' });
+  const reviewHost = h('div', { class: 'review-tools btn-pair' });
   const editedHost = h('div', { 'aria-live': 'polite' });
 
   function paintCount() {
@@ -228,7 +228,7 @@ export async function renderLetter(params, ctx) {
 
   // ---------- Step 2: send it yourself ----------
   const sendHost = h('div', { class: 'quick-send' });
-  const moreHost = h('div', { class: 'more-actions' });
+  const moreHost = h('div', { class: 'btn-col' });
 
   async function shareLetter() {
     const files = await casePhotoFiles(c);
@@ -238,29 +238,35 @@ export async function renderLetter(params, ctx) {
 
   function paintActions() {
     const btns = [];
+    const more = [];
     const copyLabel = `Copy the ${noun}`;
+    const copy = (variant) => copyButton(() => (isForm ? letter.body : `${letter.subject}\n\n${letter.body}`), { label: copyLabel, variant });
     if (EMAILABLE.has(kind)) {
       const href = mailtoHref({ to: toInput?.value || recipient, subject: letter.subject, body: letter.body });
       btns.push(button({ label: 'Email it', href, variant: 'primary', iconName: 'mail' }));
       if (canShareText()) btns.push(button({ label: (c.photos || []).length ? 'Share with photos' : 'Share', iconName: 'share', variant: 'secondary', onClick: shareLetter }));
-      btns.push(copyButton(() => `${letter.subject}\n\n${letter.body}`, { label: copyLabel }));
       if (href.length > MAILTO_SAFE_LENGTH) {
+        btns.push(copy('secondary'));
         btns.push(h('p', { class: 'hint quick-hint' }, 'If your email app cuts the letter short, use Copy and paste it into the email.'));
+      } else {
+        more.push(copy('secondary'));
       }
     } else if (isForm) {
-      btns.push(copyButton(() => letter.body, { label: copyLabel, variant: 'primary' }));
+      btns.push(copy('primary'));
       const form = kind === 'tdlr' ? STATEWIDE.complaints[0] : STATEWIDE.complaints[1];
       btns.push(button({ label: kind === 'tdlr' ? 'Open the TDLR complaint form' : 'Open the federal complaint form', href: form.url, variant: 'secondary', iconName: 'external', external: true }));
     } else {
       if (canShareText()) btns.push(button({ label: 'Share', iconName: 'share', variant: 'primary', onClick: shareLetter }));
-      btns.push(copyButton(() => `${letter.subject}\n\n${letter.body}`, { label: copyLabel }));
+      btns.push(copy(canShareText() ? 'secondary' : 'primary'));
     }
     sendHost.replaceChildren(...btns);
 
-    moreHost.replaceChildren(
-      button({ label: 'Print or save as PDF', iconName: 'printer', variant: 'quiet', onClick: () => printElement(card), attrs: { 'data-needs-app': '' } }),
-      button({ label: 'Download as a text file', iconName: 'download', variant: 'quiet', onClick: () => downloadText(`${letter.subject}\n\n${letter.body}\n`, `${safeFilename(c.place?.name)}-${kind}.txt`), attrs: { 'data-needs-app': '' } }),
+    more.push(
+      savePhotosButton(c),
+      button({ label: 'Print or save as PDF', iconName: 'printer', variant: 'secondary', onClick: () => printElement(card), attrs: { 'data-needs-app': '' } }),
+      button({ label: 'Download as a text file', iconName: 'download', variant: 'secondary', onClick: () => downloadText(`${letter.subject}\n\n${letter.body}\n`, `${safeFilename(c.place?.name)}-${kind}.txt`), attrs: { 'data-needs-app': '' } }),
     );
+    moreHost.replaceChildren(...more.filter(Boolean));
   }
 
   function paint() {
@@ -288,7 +294,7 @@ export async function renderLetter(params, ctx) {
 
   // Tone only applies to the first request.
   const toneGroup = kind === 'request' ? choiceGroup({
-    name: 'tone', legend: 'Tone of the draft', columns: 3,
+    name: 'tone', legend: 'Tone', variant: 'segmented', legendClass: 'legend legend-small',
     options: [{ value: 'friendly', label: 'Friendly' }, { value: 'formal', label: 'Formal' }],
     value: tone,
     onChange: async (v) => {
@@ -304,20 +310,17 @@ export async function renderLetter(params, ctx) {
     },
   }) : null;
 
-  // Photos can't ride along in an email link, so offer the two ways that work.
+  // Photos can't ride along in an email link, so say which ways work, in one line.
   const photoCount = (c.photos || []).length;
-  const photoHelp = photoCount && (EMAILABLE.has(kind) || isForm) ? h('div', { class: 'photo-help' },
-    h('p', null, icon('camera', { size: 18 }),
-      (() => {
-        const them = photoCount === 1 ? 'it' : 'them';
-        const yours = photoCount === 1 ? 'your photo' : `your ${photoCount} photos`;
-        if (isForm) return `To attach ${yours} to the form, save ${them} to your phone first.`;
-        return canShareText()
-          ? `Email links can't carry photos. To include ${yours}, use "Share with photos," or save ${them} to your phone and attach ${them} yourself.`
-          : `Email links can't carry photos. To include ${yours}, save ${them} to your phone and attach ${them} to your email.`;
-      })()),
-    savePhotosButton(c),
-  ) : null;
+  const photoHelp = photoCount && (EMAILABLE.has(kind) || isForm) ? h('p', { class: 'note-line photo-help' }, icon('camera', { size: 18 }),
+    (() => {
+      const them = photoCount === 1 ? 'it' : 'them';
+      const yours = photoCount === 1 ? 'your photo' : `your ${photoCount} photos`;
+      if (isForm) return `To attach ${yours} to the form, save ${them} to your phone first (under "More ways").`;
+      return canShareText()
+        ? `Email links can't carry photos. To include ${yours}, use "Share with photos."`
+        : `Email links can't carry photos. Save ${yours} to your phone (under "More ways") and attach ${them} to your email.`;
+    })()) : null;
 
   const where = {
     owner: ownerFinder(c),
@@ -334,7 +337,6 @@ export async function renderLetter(params, ctx) {
   const eventType = LETTER_EVENT[kind];
   const sent = eventType ? h('section', { class: 'block sent', 'aria-labelledby': 'sent-h' },
     h('h2', { id: 'sent-h' }, kind === 'script' ? 'Did you talk to them?' : kind === 'thanks' ? 'Did you send your thanks?' : isForm ? 'Did you file it?' : 'Did you send it?'),
-    h('p', { class: 'hint' }, 'Recording it keeps your timeline accurate and sets your next reminder.'),
     button({
       label: `Yes: ${EVENT_TYPES[eventType].label}`,
       variant: 'secondary', iconName: 'check',
@@ -353,7 +355,7 @@ export async function renderLetter(params, ctx) {
 
   const step1 = h('section', { class: 'step', 'aria-labelledby': 'step1-h' },
     h('h2', { id: 'step1-h', class: 'step-title' }, isForm ? 'Step 1: Read your summary' : 'Step 1: Read it over'),
-    h('p', { class: 'hint' }, `This is CurbCutter's draft, written from your report. Change any wording you want. Nothing is sent until you send it.`),
+    h('p', { class: 'hint' }, 'CurbCutter wrote this from your report. Change any words you want.'),
     toneGroup,
     reviewHost,
     card,
@@ -362,13 +364,13 @@ export async function renderLetter(params, ctx) {
 
   const step2 = h('section', { class: 'step', 'aria-labelledby': 'step2-h' },
     h('h2', { id: 'step2-h', class: 'step-title' }, STEP2_TITLE[kind] || 'Step 2: Send it'),
-    h('p', { class: 'hint' }, STEP2_INTRO[kind] || `When it says what you want, send it. It goes out under your name, and nothing is sent until you tap a button below.`),
+    h('p', { class: 'hint' }, STEP2_INTRO[kind] || 'It goes out under your name. Nothing is sent until you tap a button below.'),
     kind === 'script' ? null : where,
     recipientField,
     kind === 'script' ? where : null,
     sendHost,
     photoHelp,
-    moreHost,
+    fold({ title: 'More ways', sub: 'Copy, print, download, or save photos.', className: 'more-ways' }, moreHost),
   );
 
   const node = h('div', { class: 'screen letter-screen' },

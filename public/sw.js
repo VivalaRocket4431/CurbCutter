@@ -3,7 +3,7 @@
 // Never edit it by hand: a new VERSION is how phones learn that an update is ready.
 
 // <stamp>
-const VERSION = 'curbcut-58f0866bf596';
+const VERSION = 'curbcut-636f55da6f09';
 const FILES = [
   './',
   'assets/app.css',

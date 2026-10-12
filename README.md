@@ -26,7 +26,7 @@ It covers the Dallas–Fort Worth, Houston, San Antonio, and Austin areas with c
 - **No server, no account, no database to go down.** It's a static site. Reports live on the person's phone (IndexedDB), with backup and restore.
 - **Works offline.** A service worker keeps the whole app on the device, so it works in a parking garage with no signal.
 - **Safe updates.** Each deploy stamps a new version, and people see "A new version is ready" instead of the page reloading in the middle of a report.
-- **Tested before it deploys.** Render runs 39 content and logic tests on every build and won't publish if one fails. GitHub Actions also runs 18 end-to-end tests on two phone sizes. Those include axe-core WCAG 2.2 AA scans of 29 screens in light, dark, and high-contrast modes, an offline test, and layout checks at extra-large text on phones as narrow as 320 pixels.
+- **Tested before it deploys.** Render runs 39 content and logic tests on every build and won't publish if one fails. GitHub Actions also runs 19 end-to-end tests on two phone sizes. Those include axe-core WCAG 2.2 AA scans of 29 screens in light, dark, and high-contrast modes, an offline test, and layout checks at extra-large text on phones as narrow as 320 pixels.
 - **Link checking.** A monthly job checks every outside link and phone directory URL.
 
 ## Built for brain injury and other disabilities

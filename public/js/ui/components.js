@@ -78,10 +78,11 @@ export function textArea({ id, value = '', onInput, rows = 4, maxlength, attrs =
 }
 
 // Big tappable choices. options: [{ value, label, hint, icon, badge }]
-export function choiceGroup({ name, legend, hint, options, value, multiple = false, onChange, columns = 1, legendClass = 'legend' }) {
+// variant: 'tiles' (big cards with hints), 'compact' (one line each), or 'segmented' (a row of buttons).
+export function choiceGroup({ name, legend, hint, options, value, multiple = false, onChange, columns = 1, legendClass = 'legend', variant = 'tiles', describedBy }) {
   const hintId = hint ? uid('hint') : null;
   const selected = new Set(multiple ? value || [] : value != null ? [value] : []);
-  const fs = h('fieldset', { class: `choices cols-${columns}`, 'aria-describedby': hintId });
+  const fs = h('fieldset', { class: `choices cols-${columns}${variant === 'tiles' ? '' : ` choices-${variant}`}`, 'aria-describedby': [hintId, describedBy].filter(Boolean).join(' ') || null });
   fs.append(h('legend', { class: legendClass }, legend));
   if (hint) fs.append(h('p', { id: hintId, class: 'hint' }, hint));
   const list = h('div', { class: 'choice-list' });
@@ -102,18 +103,50 @@ export function choiceGroup({ name, legend, hint, options, value, multiple = fal
     list.append(h('div', { class: 'choice' },
       input,
       h('label', { for: id, class: 'choice-label' },
-        opt.icon ? h('span', { class: 'choice-icon' }, icon(opt.icon, { size: 28 })) : null,
+        opt.icon && variant === 'tiles' ? h('span', { class: 'choice-icon' }, icon(opt.icon, { size: 28 })) : null,
         h('span', { class: 'choice-text' },
           h('span', { class: 'choice-title' }, opt.label),
-          opt.hint ? h('span', { class: 'choice-hint' }, opt.hint) : null,
-          opt.badge || null,
+          opt.hint && variant === 'tiles' ? h('span', { class: 'choice-hint' }, opt.hint) : null,
+          variant === 'tiles' ? opt.badge || null : null,
         ),
-        h('span', { class: 'choice-mark', 'aria-hidden': 'true' }, icon('check', { size: 20 })),
+        variant === 'segmented' ? null : h('span', { class: 'choice-mark', 'aria-hidden': 'true' }, icon('check', { size: 20 })),
       ),
     ));
   }
   fs.append(list);
   return fs;
+}
+
+// A section that stays closed until it's needed, so each screen shows one thing at a time.
+export function fold({ title, sub, open = false, id, className = '' }, ...content) {
+  return h('details', { class: `fold${className ? ` ${className}` : ''}`, open: open || null, id: id || null },
+    h('summary', null,
+      h('span', { class: 'fold-text' },
+        h('span', { class: 'fold-title' }, title),
+        sub ? h('span', { class: 'fold-sub' }, sub) : null,
+      ),
+      icon('right', { size: 20 }),
+    ),
+    h('div', { class: 'fold-body' }, ...content.flat().filter(Boolean)),
+  );
+}
+
+// One tappable row in a plain list: a title, an optional line under it, and an arrow.
+export function rowLink({ href, title, sub, iconName, external = false, attrs = {} }) {
+  const a = h('a', { href, class: 'row-link', ...attrs },
+    iconName ? h('span', { class: 'row-icon' }, icon(iconName, { size: 22 })) : null,
+    h('span', { class: 'row-text' },
+      h('span', { class: 'row-title' }, title),
+      sub ? h('span', { class: 'row-sub' }, sub) : null,
+    ),
+    icon(external ? 'external' : 'right', { size: 18 }),
+    external ? visuallyHidden(' (opens in a new tab)') : null,
+  );
+  if (external) {
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+  }
+  return a;
 }
 
 let toastRegion = null;

@@ -1,7 +1,7 @@
 // The report wizard: one question per screen, saved as you go.
 
 import { h, icon, debounce, uid } from '../ui/dom.js';
-import { button, field, textInput, textArea, choiceGroup, toast, strengthBadge, notice, externalLink, sourceList } from '../ui/components.js';
+import { button, field, textInput, textArea, choiceGroup, toast, notice, externalLink, fold } from '../ui/components.js';
 import { getCase, putCase, newId, putPhoto, listPhotos, deletePhoto } from '../lib/store.js';
 import { getSettings, saveSettings } from '../lib/settings.js';
 import { CATEGORIES, barrier, barriersIn, needsCalc, isCityOnly } from '../data/barriers.js';
@@ -153,10 +153,10 @@ function stepPlace(c, api) {
     datalist,
     h('div', { class: 'loc' }, locBtn, locStatus),
     choiceGroup({
-      name: 'metro', legend: 'Which area is it in?', hint: 'This picks the local contacts CurbCutter shows you.',
+      name: 'metro', legend: 'Which area is it in?',
       options: METROS.map((m) => ({ value: m.id, label: m.name })),
       value: c.place.metro || null,
-      columns: 2,
+      columns: 2, variant: 'compact',
       onChange: (v) => { api.update((x) => { x.place.metro = v; }); saveSettings({ metro: v }); },
     }),
   );
@@ -169,66 +169,22 @@ function stepPlace(c, api) {
 }
 
 function stepBarriers(c, api) {
-  const firstCat = c.barriers.length ? barrier(c.barriers[0]).cat : 'parking';
-  if (!api.state.cat) api.state.cat = firstCat;
-  const listHost = h('div', { class: 'barrier-list' });
-  const summaryHost = h('div', { class: 'picked', 'aria-live': 'polite' });
-
-  const renderSummary = () => {
-    if (!c.barriers.length) {
-      summaryHost.replaceChildren();
-      return;
-    }
-    summaryHost.replaceChildren(
-      h('p', { class: 'picked-title' }, `You picked ${c.barriers.length}:`),
-      h('ul', null, c.barriers.map((id) => h('li', null, barrier(id).title))),
-    );
-  };
-
-  const renderList = () => {
-    const cat = CATEGORIES.find((x) => x.id === api.state.cat);
-    listHost.replaceChildren(choiceGroup({
-      name: `barrier-${cat.id}`,
-      legend: `${cat.title}: pick everything that applies`,
-      multiple: true,
-      options: barriersIn(cat.id).map((b) => ({ value: b.id, label: b.title, hint: b.short, badge: strengthBadge(b.strength) })),
-      value: c.barriers.filter((id) => barrier(id).cat === cat.id),
-      onChange: (vals) => {
-        api.update((x) => {
-          const others = x.barriers.filter((id) => barrier(id).cat !== cat.id);
-          x.barriers = [...others, ...vals];
-        });
-        renderSummary();
-      },
-    }));
-  };
-
-  const catGroup = choiceGroup({
-    name: 'category', legend: 'What kind of problem is it?',
-    options: CATEGORIES.map((x) => ({ value: x.id, label: x.title, hint: x.hint, icon: x.icon })),
-    value: api.state.cat,
-    columns: 2,
-    onChange: (v) => { api.state.cat = v; renderList(); },
-  });
-
-  renderList();
-  renderSummary();
   const err = api.errorFor('barrier-first');
+  const groups = CATEGORIES.map((cat) => choiceGroup({
+    name: `barrier-${cat.id}`,
+    legend: cat.id === 'other' ? 'Not on the list?' : cat.title,
+    multiple: true,
+    variant: 'compact',
+    options: barriersIn(cat.id).map((b) => ({ value: b.id, label: b.title })),
+    value: c.barriers.filter((id) => barrier(id).cat === cat.id),
+    onChange: (vals) => api.update((x) => {
+      x.barriers = [...x.barriers.filter((id) => barrier(id).cat !== cat.id), ...vals];
+    }),
+  }));
   const node = h('div', { class: 'stack' },
-    catGroup,
+    h('p', { class: 'intro' }, 'Check everything you noticed. You can pick more than one.'),
     err ? h('p', { class: 'error-text', id: 'barrier-first', tabindex: '-1' }, icon('alert', { size: 18 }), err) : h('span', { id: 'barrier-first', tabindex: '-1' }),
-    listHost,
-    summaryHost,
-    h('details', { class: 'explain' },
-      h('summary', null, 'What do the labels mean?'),
-      h('ul', null,
-        h('li', null, strengthBadge('required'), ' Federal rules require it. For older buildings, when the fix is easy and not too costly.'),
-        h('li', null, strengthBadge('built'), ' Required for new or remodeled places, and a strong request for older ones.'),
-        h('li', null, strengthBadge('upkeep'), ' Businesses must keep it clear and working.'),
-        h('li', null, strengthBadge('request'), ' Not always required, but a fair thing to ask.'),
-        h('li', null, strengthBadge('city'), ' Usually the city\'s responsibility.'),
-      ),
-    ),
+    h('div', { class: 'check-groups' }, groups),
   );
   return {
     node,
@@ -282,7 +238,7 @@ function stepParking(c, api) {
     legendClass: 'legend legend-small',
     options: TABLE_ROWS.map((r, i) => ({ value: i, label: `${r.min} to ${r.max} spaces` })),
     value: p.totalRange ?? null,
-    columns: 2,
+    columns: 2, variant: 'compact',
     onChange: (i) => {
       api.update((x) => { x.parking.totalRange = i; x.parking.total = ''; });
       total.input.value = '';
@@ -295,13 +251,13 @@ function stepParking(c, api) {
 
   renderResult();
   const node = h('div', { class: 'stack' },
-    h('p', { class: 'intro' }, 'Counting helps your letter say exactly what is missing. Count only this lot. A separate lot or garage is counted on its own.'),
-    field({ id: 'park-total', label: 'About how many parking spaces are in this lot?', hint: 'Include the accessible spaces. A close estimate is fine.', input: total.node }),
+    h('p', { class: 'intro' }, 'Count only this lot. A close estimate is fine.'),
+    field({ id: 'park-total', label: 'About how many parking spaces are in this lot?', hint: 'Include the accessible spaces.', input: total.node }),
     h('details', { class: 'explain', open: p.totalRange != null ? true : null }, h('summary', null, 'Not sure? Pick a range'), rangeHost),
     field({ id: 'park-accessible', label: 'How many accessible spaces did you see?', hint: 'Spaces with the wheelchair symbol, signed or painted.', input: acc.node }),
     field({ id: 'park-van', label: 'How many are marked "Van Accessible"?', input: van.node }),
     choiceGroup({
-      name: 'facility', legend: 'What kind of place is this?',
+      name: 'facility', legend: 'What kind of place is this?', variant: 'compact',
       options: Object.entries(FACILITY_TYPES).map(([value, label]) => ({ value, label })),
       value: p.facility || 'standard',
       onChange: (v) => { api.update((x) => { x.parking.facility = v; }); renderResult(); },
@@ -321,15 +277,9 @@ function stepDetails(c, api) {
       ? 'For example: The ramp is blocked by a planter.'
       : id === 'path_city'
         ? 'For example: Northeast corner of Main St and 5th St has no curb ramp.'
-        : 'Optional. For example: which space, how often, or a measurement.';
-    return h('section', { class: 'detail-card' },
-      h('h2', { class: 'detail-title' }, b.title),
-      strengthBadge(b.strength),
-      h('details', { class: 'explain' },
-        h('summary', null, 'What the rule says'),
-        h('p', null, b.rule),
-        sourceList(b.cites),
-      ),
+        : 'For example: which space, how often, or a measurement.';
+    return h('section', { class: 'detail-block' },
+      h('h2', null, b.title),
       field({
         id: fid, label, hint, optional: !required, error: api.errorFor(fid),
         input: textArea({ id: fid, rows: 3, value: c.notes?.[id] || '', onInput: (v) => api.update((x) => { x.notes = { ...(x.notes || {}), [id]: v }; }) }),
@@ -337,7 +287,7 @@ function stepDetails(c, api) {
     );
   });
   return {
-    node: h('div', { class: 'stack' }, h('p', { class: 'intro' }, 'Details make your request specific and believable. Skip any you are not sure about.'), ...cards),
+    node: h('div', { class: 'stack' }, h('p', { class: 'intro' }, 'A detail or two makes your request specific. Skip anything you aren\'t sure about.'), ...cards),
     validate: () => {
       const errs = [];
       if (c.barriers.includes('other') && !(c.notes?.other || '').trim()) errs.push({ id: 'note-other', message: 'Describe the problem in a few words.' });
@@ -404,18 +354,15 @@ function stepPhotos(c, api) {
   renderGrid();
   return {
     node: h('div', { class: 'stack' },
-      h('p', { class: 'intro' }, 'Photos are the most convincing part of a report. They are optional, and you can add more later.'),
-      tips.length ? h('div', { class: 'tips' }, h('p', { class: 'tips-title' }, icon('camera', { size: 20 }), 'Good photos to take'), h('ul', null, tips.map((t) => h('li', null, t)))) : null,
-      h('div', { class: 'btn-row' },
+      h('p', { class: 'intro' }, 'Photos make a report convincing. They\'re optional, and you can add more later.'),
+      h('div', { class: 'btn-pair' },
         fileButton('Take a photo', 'camera', { capture: 'environment' }),
         fileButton('Choose photos', 'image', { multiple: true }),
       ),
       status,
       grid,
-      notice({ tone: 'info', title: 'Where your photos go', body: [
-        'Photos are saved inside CurbCutter on this phone. They are shrunk, and their hidden location data is removed. Avoid faces and license plates.',
-        'Photos you take here don\'t go into your phone\'s photo library. When it\'s time to send your letter, CurbCutter can attach them for you or save them to your phone.',
-      ] }),
+      tips.length ? fold({ title: 'What to photograph' }, h('ul', { class: 'prose-list' }, tips.map((t) => h('li', null, t)))) : null,
+      h('p', { class: 'note-line photo-note' }, icon('info', { size: 18 }), 'Photos stay inside CurbCutter on this phone, with their location data removed. They don\'t go into your phone\'s photo library, and you can save them there later.'),
     ),
   };
 }
@@ -470,12 +417,12 @@ function stepRequest(c, api) {
   const cityOnly = isCityOnly(c.barriers);
   return {
     node: h('div', { class: 'stack' },
-      h('p', { class: 'intro' }, 'We wrote a request from what you picked. Change anything you like. Specific requests get specific answers.'),
+      h('p', { class: 'intro' }, 'CurbCutter wrote this from what you picked. Change anything you like.'),
       field({ id: 'request', label: cityOnly ? 'What should the city fix?' : 'What should the business change?', input: ta }),
       reset,
       choiceGroup({
-        name: 'reply-days', legend: 'How long should they have to reply?',
-        hint: 'You are asking for a reply or a plan by this date, not a finished fix.',
+        name: 'reply-days', legend: 'How long should they have to reply?', variant: 'compact',
+        hint: 'A reply or a plan by this date, not a finished fix.',
         options: [{ value: 7, label: '1 week' }, { value: 14, label: '2 weeks (most common)' }, { value: 30, label: '30 days' }],
         value: c.replyDays || 14,
         onChange: (v) => { api.update((x) => { x.replyDays = Number(v); }); saveSettings({ replyDays: Number(v) }); },
@@ -493,7 +440,7 @@ function profileFields(onChange) {
     field({ id: 'me-phone', label: 'Your phone', optional: true, input: textInput({ id: 'me-phone', type: 'tel', value: p.phone, autocomplete: 'tel', onInput: upd('phone') }) }),
     field({ id: 'me-city', label: 'The city you live in', optional: true, hint: 'Used in letters to your council member and to reporters.', input: textInput({ id: 'me-city', value: p.city, autocomplete: 'address-level2', onInput: upd('city') }) }),
     choiceGroup({
-      name: 'me-who', legend: 'Which describes you?',
+      name: 'me-who', legend: 'Which describes you?', variant: 'compact',
       hint: 'This changes the first sentence of your letters.',
       options: [
         { value: 'self', label: 'I have a disability' },
@@ -534,13 +481,13 @@ function stepReview(c) {
   const steps = activeSteps(c).map((s) => s.id);
   return {
     node: h('div', { class: 'stack' },
-      h('p', { class: 'intro' }, 'Check that everything looks right. After you save, CurbCutter drafts your letter. You read it and change anything you want before you send it.'),
+      h('p', { class: 'intro' }, 'Check that it looks right. Next, CurbCutter drafts your letter, and you can change any of it before you send it.'),
       reviewSection('Place', 'place', c,
         h('p', null, h('strong', null, c.place.name || 'No name'), c.place.address ? h('br') : null, c.place.address || null, c.place.city ? `, ${c.place.city}` : null),
         h('p', { class: 'hint' }, metroName(c.place.metro)),
       ),
       reviewSection('Problems', 'barriers', c,
-        h('ul', { class: 'review-list' }, c.barriers.map((id) => h('li', null, barrier(id).title, ' ', strengthBadge(barrier(id).strength), c.notes?.[id] ? h('p', { class: 'hint' }, c.notes[id]) : null))),
+        h('ul', { class: 'review-list' }, c.barriers.map((id) => h('li', null, barrier(id).title, c.notes?.[id] ? h('p', { class: 'hint' }, c.notes[id]) : null))),
       ),
       steps.includes('parking') && a.known ? reviewSection('Parking count', 'parking', c,
         h('p', null, `Required: at least ${a.required} accessible (${a.vanRequired} van-accessible). ${a.accessible != null ? `You counted ${a.accessible}${a.van != null ? ` (${a.van} van)` : ''}.` : ''}`),
@@ -550,7 +497,7 @@ function stepReview(c) {
         h('p', null, `Found on ${longDate(c.date)}.`),
         c.impact ? h('p', null, c.impact) : null,
       ),
-      reviewSection('Your request', 'request', c, h('p', null, c.requestEdited ? c.request : requestText({ ...c, request: '' }))),
+      reviewSection('Your request', 'request', c, h('p', { class: 'pre' }, c.requestEdited ? c.request : requestText({ ...c, request: '' }))),
       !p.name ? notice({ tone: 'warn', title: 'Your letters are not signed yet', body: h('p', null, h('a', { href: '#/settings' }, 'Add your name in Settings'), ' so businesses know who is asking.') }) : null,
     ),
   };
@@ -573,7 +520,7 @@ export async function renderWizard(params, ctx) {
   if (!c) {
     return {
       title: 'Report not found',
-      node: h('section', { class: 'screen' }, h('h1', { id: 'page-title', tabindex: '-1' }, 'We could not find that report'), button({ label: 'Go to My cases', href: '#/cases', variant: 'primary' })),
+      node: h('section', { class: 'screen' }, h('h1', { id: 'page-title', tabindex: '-1' }, 'We could not find that report'), button({ label: 'Go to Home', href: '#/', variant: 'primary' })),
     };
   }
   let steps = activeSteps(c);
@@ -596,7 +543,12 @@ export async function renderWizard(params, ctx) {
 
   const api = {
     state: wizardState,
-    update(fn) { fn(c); save(); },
+    update(fn) {
+      fn(c);
+      save();
+      // An error stays on screen only while it's still true.
+      if (errors.length && current?.validate && !current.validate().length) clearErrors();
+    },
     flush() { save.flush(); },
     errorFor(id) { return errors.find((e) => e.id === id)?.message || null; },
     onCleanup(fn) { cleanups.push(fn); },
@@ -606,6 +558,14 @@ export async function renderWizard(params, ctx) {
   const host = h('div', { class: 'step-host' });
   const summaryHost = h('div');
   let current = null;
+
+  function clearErrors() {
+    errors = [];
+    summaryHost.replaceChildren();
+    host.querySelectorAll('.error-text').forEach((el) => el.remove());
+    host.querySelectorAll('[aria-invalid]').forEach((el) => el.removeAttribute('aria-invalid'));
+    host.querySelectorAll('.field-error').forEach((el) => el.classList.remove('field-error'));
+  }
 
   function renderStep(focusId) {
     current = RENDERERS[step.id](c, api);
@@ -671,13 +631,12 @@ export async function renderWizard(params, ctx) {
   }, editing ? 'Back to the case' : 'Save and finish later');
 
   const node = h('div', { class: 'screen wizard' },
-    h('div', { class: 'wizard-top' },
-      h('p', { class: 'eyebrow' }, `Step ${idx + 1} of ${total}`, h('span', { class: 'stage' }, step.stage)),
-      later,
+    h('div', { class: 'wizard-head' },
+      progress,
+      h('p', { class: 'wizard-meta' }, h('span', null, `Step ${idx + 1} of ${total}`), later),
     ),
-    progress,
     h('h1', { id: 'page-title', tabindex: '-1' }, step.title),
-    h('p', { class: 'autosave' }, icon('check', { size: 16 }), 'Your answers save automatically.'),
+    idx === 0 && !editing ? h('p', { class: 'autosave' }, icon('check', { size: 16 }), 'Your answers save as you go.') : null,
     summaryHost,
     host,
     h('div', { class: 'wizard-actions' }, backBtn, nextBtn),
