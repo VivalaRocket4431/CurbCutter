@@ -1,11 +1,11 @@
 import { h, icon } from '../ui/dom.js';
 import { button, statusChip, strengthBadge, sourceList, confirmButton, toast, notice, fold } from '../ui/components.js';
 import { eventRecorder, calendarButton } from '../ui/recorder.js';
-import { savePhotosButton } from '../ui/photos.js';
-import { getCase, putCase, deleteCase, listPhotos } from '../lib/store.js';
+import { savePhotosButton, photoViewer, photoThumbs } from '../ui/photos.js';
+import { getCase, putCase, deleteCase } from '../lib/store.js';
 import { nextStep, statusLabel, RUNGS, rungDone, has } from '../lib/ladder.js';
 import { EVENT_TYPES, withoutEvent } from '../lib/events.js';
-import { LETTER_KINDS, requestText } from '../lib/letters.js';
+import { LETTER_KINDS, requestText, sentLinkLabel } from '../lib/letters.js';
 import { barrier } from '../data/barriers.js';
 import { metroName } from '../data/contacts.js';
 import { assessParking } from '../lib/parking.js';
@@ -21,23 +21,6 @@ function actionButton(c, a, openRecorder, primary) {
   return null;
 }
 
-function photoViewer() {
-  const img = h('img', { alt: '' });
-  const close = button({ label: 'Close', iconName: 'close', variant: 'secondary' });
-  const dlg = h('dialog', { class: 'viewer', 'aria-label': 'Photo' }, img, close);
-  close.addEventListener('click', () => dlg.close());
-  dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
-  return {
-    node: dlg,
-    open(src, alt) {
-      img.src = src;
-      img.alt = alt;
-      if (typeof dlg.showModal === 'function') dlg.showModal();
-      else dlg.setAttribute('open', '');
-    },
-  };
-}
-
 export async function renderCase(params, ctx) {
   const c = await getCase(params.id);
   if (!c) {
@@ -51,7 +34,6 @@ export async function renderCase(params, ctx) {
     return null;
   }
 
-  const urls = [];
   const viewer = photoViewer();
   const st = statusLabel(c);
   const step = nextStep(c);
@@ -104,20 +86,21 @@ export async function renderCase(params, ctx) {
     })),
   );
 
+  // ----- Photos: in plain view, because people come back to check them -----
+  const thumbs = await photoThumbs(c, viewer);
+  const photoSection = thumbs ? h('section', { class: 'block', 'aria-labelledby': 'photos-h' },
+    h('h2', { id: 'photos-h' }, thumbs.count === 1 ? 'Your photo' : `Your ${thumbs.count} photos`),
+    h('p', { class: 'hint' }, 'Tap a photo to see it full size.'),
+    thumbs.node,
+    h('div', { class: 'btn-row' }, savePhotosButton(c), h('a', { href: `#/case/${c.id}/step/photos`, class: 'more' }, icon('plus', { size: 18 }), 'Add or remove photos')),
+  ) : null;
+
   // ----- The problem -----
   const a = assessParking(c.parking);
-  const photos = (await listPhotos(c.id)).filter((p) => (c.photos || []).includes(p.id));
-  const thumbs = photos.map((p, i) => {
-    const url = URL.createObjectURL(p.blob);
-    urls.push(url);
-    const alt = `Photo ${i + 1} of ${c.place?.name || 'the barrier'}`;
-    return h('li', null, h('button', { type: 'button', class: 'thumb', onclick: () => viewer.open(url, alt) }, h('img', { src: url, alt })));
-  });
-
   const nProblems = (c.barriers || []).length;
   const problem = fold({
     title: 'Your report',
-    sub: [`${nProblems} ${nProblems === 1 ? 'problem' : 'problems'}`, thumbs.length ? `${thumbs.length} ${thumbs.length === 1 ? 'photo' : 'photos'}` : 'no photos yet'].join(', '),
+    sub: [`${nProblems} ${nProblems === 1 ? 'problem' : 'problems'}`, thumbs ? `${thumbs.count} ${thumbs.count === 1 ? 'photo' : 'photos'}` : 'no photos yet'].join(', '),
   },
     h('p', null, h('a', { href: `#/case/${c.id}/step/review`, class: 'more' }, icon('edit', { size: 18 }), 'Change the report')),
     h('ul', { class: 'barrier-cards' }, (c.barriers || []).map((id) => {
@@ -136,8 +119,7 @@ export async function renderCase(params, ctx) {
     ) : null,
     c.impact ? h('div', { class: 'quote' }, h('p', { class: 'quote-label' }, 'How it affected you'), h('p', null, c.impact)) : null,
     h('div', { class: 'quote' }, h('p', { class: 'quote-label' }, 'Your request'), h('p', { class: 'pre' }, requestText(c))),
-    thumbs.length ? h('ul', { class: 'photo-grid small' }, thumbs) : h('p', { class: 'hint' }, 'No photos yet. ', h('a', { href: `#/case/${c.id}/step/photos` }, 'Add photos')),
-    thumbs.length ? h('div', { class: 'btn-row' }, savePhotosButton(c), h('a', { href: `#/case/${c.id}/step/photos`, class: 'more' }, icon('plus', { size: 18 }), 'Add or remove photos')) : null,
+    thumbs ? null : h('p', { class: 'hint' }, 'No photos yet. ', h('a', { href: `#/case/${c.id}/step/photos` }, 'Add photos')),
   );
 
   // ----- Timeline -----
@@ -150,6 +132,7 @@ export async function renderCase(params, ctx) {
         e.outcome === 'yes' ? ': they agreed to fix it' : e.outcome === 'no' ? ': they said no' : '',
         e.ref ? ` (#${e.ref})` : ''),
       e.note ? h('p', { class: 'tl-note' }, e.note) : null,
+      e.letter ? h('p', { class: 'tl-link' }, h('a', { href: `#/case/${c.id}/sent/${e.id}`, class: 'more' }, icon('mail', { size: 18 }), sentLinkLabel(e.letter.kind))) : null,
       e.type !== 'documented' ? confirmButton({
         label: 'Remove', iconName: 'trash', variant: 'quiet',
         confirmText: 'Remove this from the timeline?', confirmLabel: 'Remove it',
@@ -181,6 +164,7 @@ export async function renderCase(params, ctx) {
     c.status === 'resolved' ? notice({ tone: 'good', title: 'Fixed!', body: 'This barrier was fixed. Thank you for speaking up.', iconName: 'star' }) : null,
     next,
     recorderHost,
+    photoSection,
     timeline,
     h('div', { class: 'folds' }, quick, ladder, problem, manage),
     viewer.node,
@@ -189,6 +173,6 @@ export async function renderCase(params, ctx) {
   return {
     title: c.place?.name || 'Case',
     node,
-    cleanup: () => urls.forEach((u) => URL.revokeObjectURL(u)),
+    cleanup: () => thumbs?.cleanup(),
   };
 }

@@ -39,7 +39,8 @@ export function reminderPanel(c, { headingLevel = 3 } = {}) {
 }
 
 // type: an EVENT_TYPES key. onSaved(newCase) is called after saving.
-export function eventRecorder(c, type, { onSaved, onCancel, intro } = {}) {
+// letter: a function returning { kind, subject, body }, read at the moment of saving.
+export function eventRecorder(c, type, { onSaved, onCancel, intro, letter } = {}) {
   const meta = EVENT_TYPES[type];
   const id = uid('rec');
   let outcome = '';
@@ -53,7 +54,7 @@ export function eventRecorder(c, type, { onSaved, onCancel, intro } = {}) {
   cancel.addEventListener('click', () => onCancel?.());
 
   save.addEventListener('click', async () => {
-    const next = withEvent(c, { type, date: date.value || todayISO(), note: note.value, ref: ref?.value || '', outcome });
+    const next = withEvent(c, { type, date: date.value || todayISO(), note: note.value, ref: ref?.value || '', outcome, letter: typeof letter === 'function' ? letter() : letter });
     const saved = await putCase(next);
     toast(type === 'fixed' ? 'Wonderful. Marked as fixed!' : 'Saved to your timeline.', { tone: 'good' });
     const reminder = reminderPanel(saved);

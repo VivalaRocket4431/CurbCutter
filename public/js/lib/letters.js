@@ -20,6 +20,21 @@ export const LETTER_KINDS = {
   summary: { title: 'Case record', to: 'Anyone helping you', purpose: 'Every fact, date, and source in one place.' },
 };
 
+// What to call each kind on screen: "Copy the letter", "Read the summary you filed".
+export function letterNoun(kind) {
+  if (kind === 'tdlr' || kind === 'doj') return 'summary';
+  if (kind === 'script') return 'script';
+  if (kind === 'summary') return 'record';
+  return 'letter';
+}
+
+// The link from a timeline entry to the exact text that was sent.
+export function sentLinkLabel(kind) {
+  if (kind === 'script') return 'Read your script';
+  if (kind === 'tdlr' || kind === 'doj') return 'Read the summary you filed';
+  return `Read the ${letterNoun(kind)} you sent`;
+}
+
 const SWADA = 'the Southwest ADA Center (713-797-7171)';
 
 function clean(s) {
@@ -161,12 +176,11 @@ function impactBlock(c, profile) {
   return `${label}:\n${text}`;
 }
 
-function helpBlock(c) {
+// One short sentence near the end: help with the cost exists. Exact amounts are in the Rights article,
+// and the form and code section let the business check the details for itself.
+function helpLine(c) {
   if (isCityOnly(barrierIds(c))) return '';
-  return `Help for your business:\n${list([
-    `Free advice: ${SWADA} answers ADA questions from businesses.`,
-    'Tax incentives: small businesses may qualify for the Disabled Access Credit (IRS Form 8826, up to $5,000 a year), and any business can deduct up to $15,000 a year for removing barriers (IRS Section 190).',
-  ])}`;
+  return `If cost is a concern, federal tax incentives may help (IRS Form 8826 and tax code Section 190), and ${SWADA} gives businesses free ADA advice.`;
 }
 
 function restripeNote(c) {
@@ -236,8 +250,8 @@ function requestLetter(c, profile, tone) {
     section('What the rules say:', list(ruleLines(c))),
     section('My request:', requestText(c)),
     restripeNote(c),
-    helpBlock(c),
     `${formal ? 'Please let me know' : 'Could you let me know'} by ${replyBy(c)} what you plan to do? ${photoNote(c)} ${formal ? 'I would be glad to discuss it.' : "I'm glad to talk it over."}`.replace(/\s+/g, ' '),
+    helpLine(c),
     `Thank you for making ${business(c)} welcoming to everyone.`,
     signoff(profile, tone),
   ]);
@@ -268,8 +282,8 @@ function followupLetter(c, profile) {
     `As of ${longDate(todayISO())}, the problem is still there.`,
     section('Here is what I am asking for:', requestText(c)),
     section('Why it matters:', list(ruleLines(c))),
-    helpBlock(c),
     `Could you reply by ${replyBy(c, 10)}? If it isn't fixed, my next step is to contact the property owner and the Texas Department of Licensing and Regulation (TDLR).`,
+    helpLine(c),
     signoff(profile, 'friendly'),
   ]);
   return { subject, body };
@@ -291,7 +305,7 @@ function finalLetter(c, profile) {
     parkingLine(c),
     section('What I am asking for:', requestText(c)),
     `If I do not hear back by ${replyBy(c, 10)}, I plan to file complaints with the Texas Department of Licensing and Regulation and the U.S. Department of Justice, and to share my experience with local reporters. I would much rather see ${business(c)} fix this, and I am glad to talk.`,
-    helpBlock(c),
+    helpLine(c),
     signoff(profile, 'formal'),
   ]);
   return { subject, body };
@@ -310,8 +324,8 @@ function ownerLetter(c, profile) {
     section('What the rules say:', list(ruleLines(c))),
     section('My request:', requestText(c)),
     restripeNote(c),
-    helpBlock(c),
     `Could you let me know by ${replyBy(c)} what you plan to do? ${photoNote(c)}`.trim(),
+    helpLine(c),
     signoff(profile, 'formal'),
   ]);
   return { subject, body };

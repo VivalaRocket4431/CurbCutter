@@ -9,9 +9,10 @@ services:
     # After Apply, add the DNS records in docs/DEPLOY.md (step 4) and click Verify in Render.
     domains:
       - curbcutter.org
-    # Keep this "enabled" until https://curbcutter.org works. Then change it to "disabled" so the app
-    # has exactly one address. Phones keep reports per web address, so two addresses would split them.
-    renderSubdomainPolicy: enabled
+    # "disabled" turns off curbcutter.onrender.com so the app has exactly one address. Phones keep reports
+    # per web address, so two addresses would split them. Set it to "enabled" only while setting up a
+    # new domain.
+    renderSubdomainPolicy: disabled
     # 1. Runs the content and logic tests. If any fail, the build stops and the current site stays live.
     # 2. Writes a fresh file list and version into sw.js so installed apps learn about updates.
     buildCommand: npm run test:unit && node scripts/stamp-sw.mjs

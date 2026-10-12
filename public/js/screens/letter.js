@@ -4,10 +4,11 @@
 import { h, icon } from '../ui/dom.js';
 import { button, field, textInput, textArea, choiceGroup, toast, copyButton, contactCard, notice, externalLink, sourceList, fold } from '../ui/components.js';
 import { eventRecorder } from '../ui/recorder.js';
-import { savePhotosButton, casePhotoFiles } from '../ui/photos.js';
+import { savePhotosButton, casePhotoFiles, photoViewer, photoThumbs } from '../ui/photos.js';
 import { getCase, putCase } from '../lib/store.js';
 import { getSettings } from '../lib/settings.js';
-import { LETTER_KINDS, makeLetter, tdlrFields } from '../lib/letters.js';
+import { LETTER_KINDS, makeLetter, tdlrFields, letterNoun, sentLinkLabel } from '../lib/letters.js';
+import { longDate } from '../lib/dates.js';
 import { LETTER_EVENT, EVENT_TYPES } from '../lib/events.js';
 import { mailtoHref, MAILTO_SAFE_LENGTH, shareContent, canShareText, downloadText, printElement, safeFilename } from '../lib/share.js';
 import { speak, speechSupported } from '../lib/speech.js';
@@ -132,7 +133,7 @@ export async function renderLetter(params, ctx) {
   }
   const kind = params.kind;
   const isForm = FORMS.has(kind);
-  const noun = isForm ? 'summary' : kind === 'script' ? 'script' : kind === 'summary' ? 'record' : 'letter';
+  const noun = letterNoun(kind);
   const profile = getSettings().profile;
   const sources = caseSources(c);
   let tone = c.letterTone || 'friendly';
@@ -245,11 +246,9 @@ export async function renderLetter(params, ctx) {
       const href = mailtoHref({ to: toInput?.value || recipient, subject: letter.subject, body: letter.body });
       btns.push(button({ label: 'Email it', href, variant: 'primary', iconName: 'mail' }));
       if (canShareText()) btns.push(button({ label: (c.photos || []).length ? 'Share with photos' : 'Share', iconName: 'share', variant: 'secondary', onClick: shareLetter }));
+      btns.push(copy('secondary'));
       if (href.length > MAILTO_SAFE_LENGTH) {
-        btns.push(copy('secondary'));
         btns.push(h('p', { class: 'hint quick-hint' }, 'If your email app cuts the letter short, use Copy and paste it into the email.'));
-      } else {
-        more.push(copy('secondary'));
       }
     } else if (isForm) {
       btns.push(copy('primary'));
@@ -332,6 +331,21 @@ export async function renderLetter(params, ctx) {
     script: scriptPanel(c),
   }[kind] || null;
 
+  // Photos in plain view, so people can check what goes with the letter.
+  const viewer = photoViewer();
+  const thumbs = kind !== 'script' && photoCount ? await photoThumbs(c, viewer) : null;
+  const photoBlock = thumbs ? h('div', { class: 'letter-photos' },
+    h('h3', { class: 'sub-title' }, thumbs.count === 1 ? 'Your photo' : `Your ${thumbs.count} photos`),
+    thumbs.node,
+    photoHelp,
+  ) : photoHelp;
+
+  // If this letter was already marked as sent, say so and link to the exact text.
+  const lastSent = (c.events || []).filter((e) => e.letter?.kind === kind).sort((x, y) => (x.date < y.date ? -1 : x.date > y.date ? 1 : 0)).pop();
+  const sentNote = lastSent ? h('p', { class: 'note-line sent-note' }, icon('check', { size: 18 }),
+    h('span', null, `${EVENT_TYPES[lastSent.type]?.past || 'Sent'} on ${longDate(lastSent.date)}. `,
+      h('a', { href: `#/case/${c.id}/sent/${lastSent.id}` }, sentLinkLabel(kind)))) : null;
+
   // ---------- Did you send it? ----------
   const sentHost = h('div', { class: 'recorder-host' });
   const eventType = LETTER_EVENT[kind];
@@ -342,6 +356,7 @@ export async function renderLetter(params, ctx) {
       variant: 'secondary', iconName: 'check',
       onClick: () => {
         sentHost.replaceChildren(eventRecorder(c, eventType, {
+          letter: () => ({ kind, subject: letter.subject, body: letter.body }),
           onSaved: () => ctx.navigate(`#/case/${c.id}`),
           onCancel: () => sentHost.replaceChildren(),
         }));
@@ -369,8 +384,8 @@ export async function renderLetter(params, ctx) {
     recipientField,
     kind === 'script' ? where : null,
     sendHost,
-    photoHelp,
-    fold({ title: 'More ways', sub: 'Copy, print, download, or save photos.', className: 'more-ways' }, moreHost),
+    photoBlock,
+    fold({ title: 'More ways', sub: photoCount ? 'Save photos, print, or download.' : 'Print or download.', className: 'more-ways' }, moreHost),
   );
 
   const node = h('div', { class: 'screen letter-screen' },
@@ -380,12 +395,14 @@ export async function renderLetter(params, ctx) {
       h('h1', { id: 'page-title', tabindex: '-1' }, meta.title),
       h('p', { class: 'lede' }, meta.purpose),
     ),
+    sentNote,
     step1,
     step2,
     kind === 'summary' ? sourceList((c.barriers || []).flatMap((id) => barrier(id)?.cites || []), { title: 'Sources in this record' }) : null,
     sent,
     h('p', { class: 'fine' }, 'CurbCutter shares general information, not legal advice.'),
+    viewer.node,
   );
 
-  return { title: `${meta.title}: ${c.place?.name || 'case'}`, node };
+  return { title: `${meta.title}: ${c.place?.name || 'case'}`, node, cleanup: () => thumbs?.cleanup() };
 }

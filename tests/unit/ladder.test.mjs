@@ -62,3 +62,14 @@ test('drafts ask to finish the report', () => {
   const c = { ...base(), status: 'open', barriers: [] };
   assert.equal(nextStep(c, TODAY).rung, 'document');
 });
+
+test('a letter marked as sent keeps its exact text, even if the case changes later', () => {
+  const letter = { kind: 'request', subject: 'Accessibility request for Shop', body: 'Hello,\n\nPlease add a sign.\n\nBest regards,\nAlex' };
+  let c = withEvent(base(), { type: 'asked', date: '2026-10-02', letter });
+  const ev = c.events.at(-1);
+  assert.deepEqual(ev.letter, letter);
+  letter.body = 'changed afterward';
+  assert.equal(ev.letter.body, 'Hello,\n\nPlease add a sign.\n\nBest regards,\nAlex');
+  c = withEvent(c, { type: 'note', date: '2026-10-03', note: 'Called the store', letter: { kind: 'request', subject: 'x', body: '' } });
+  assert.equal(c.events.at(-1).letter, undefined, 'an empty letter is not saved');
+});

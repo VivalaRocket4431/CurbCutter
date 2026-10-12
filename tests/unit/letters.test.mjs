@@ -62,15 +62,23 @@ test('request letter cites the rule, the parking math, and help for the business
   assert.match(body, /at least 5 accessible spaces/);
   assert.match(body, /681\.011\(f-2\)/);
   assert.match(body, /Southwest ADA Center \(713-797-7171\)/);
-  assert.match(body, /Help for your business:/);
-  assert.match(body, /Tax incentives:/);
-  assert.match(body, /IRS Form 8826/);
-  assert.match(body, /Section 190/);
+  assert.match(body, /federal tax incentives may help \(IRS Form 8826 and tax code Section 190\)/);
   assert.match(body, /readily achievable in most cases/);
   assert.match(body, /Alex Rivera/);
   assert.match(body, /I have 2 photos I can share\./);
   // Never asks for money.
   assert.doesNotMatch(body, /\bpay me\b|compensation|settlement|damages/i);
+});
+
+test('help with the cost is one short line near the end, with no dollar amounts', () => {
+  for (const kind of ['request', 'followup', 'final', 'owner']) {
+    const { body } = makeLetter(kind, baseCase(), profile);
+    const help = body.indexOf('federal tax incentives may help');
+    assert.ok(help > 0, `${kind}: help line missing`);
+    assert.equal(body.match(/federal tax incentives/g).length, 1, `${kind}: help line repeated`);
+    assert.ok(help > body.indexOf('by ') && help < body.lastIndexOf('Alex Rivera'), `${kind}: help line should come after the reply date and before the signature`);
+    assert.doesNotMatch(body, /Help for your business|\$5,000|\$15,000/, `${kind}: old help block or dollar amounts`);
+  }
 });
 
 test('the DOJ restriping quote appears once, not twice', () => {

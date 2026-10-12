@@ -58,10 +58,13 @@ export function nextCheckAfter(type, date, c, outcome) {
 }
 
 // Returns a new case object with the event added.
-export function withEvent(c, { type, date = todayISO(), note = '', ref = '', outcome = '' }) {
+// letter: when the person marks a letter as sent, the exact text they saw ({ kind, subject, body }),
+// so they can reread it later even if the case changes and CurbCutter's draft would come out different.
+export function withEvent(c, { type, date = todayISO(), note = '', ref = '', outcome = '', letter = null }) {
   const ev = { id: newId('ev'), type, date, note: note.trim() };
   if (ref) ev.ref = ref.trim();
   if (outcome) ev.outcome = outcome;
+  if (letter?.body) ev.letter = { kind: String(letter.kind || ''), subject: String(letter.subject || ''), body: String(letter.body) };
   const next = { ...c, events: [...(c.events || []), ev] };
   const check = nextCheckAfter(type, date, c, outcome);
   if (check !== undefined) next.nextCheck = check;

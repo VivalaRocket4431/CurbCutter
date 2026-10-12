@@ -19,6 +19,7 @@ It covers the Dallas–Fort Worth, Houston, San Antonio, and Austin areas with c
 - **Letters never overclaim.** Each barrier is labeled *Required*, *Required when built or remodeled*, *Must be kept working*, *A fair request*, or *The city's job*.
 - **No AI in the letters.** Fixed templates turn the same facts into the same text, so everything can be checked.
 - **The person has the last word.** Every letter is a draft they can change, and nothing is sent until they send it from their own email or phone.
+- **A record of what was sent.** When someone marks a letter as sent, CurbCutter saves its exact text with the date, so they can reread or copy it later.
 - **Tests guard the content.** Unit tests fail if a barrier cites a missing source, a contact has a malformed phone number, the TDLR summary goes over the state form's 1,000-character limit, or a published page still has a drafting note or placeholder in it.
 
 ## Why it keeps working
@@ -26,7 +27,7 @@ It covers the Dallas–Fort Worth, Houston, San Antonio, and Austin areas with c
 - **No server, no account, no database to go down.** It's a static site. Reports live on the person's phone (IndexedDB), with backup and restore.
 - **Works offline.** A service worker keeps the whole app on the device, so it works in a parking garage with no signal.
 - **Safe updates.** Each deploy stamps a new version, and people see "A new version is ready" instead of the page reloading in the middle of a report.
-- **Tested before it deploys.** Render runs 39 content and logic tests on every build and won't publish if one fails. GitHub Actions also runs 19 end-to-end tests on two phone sizes. Those include axe-core WCAG 2.2 AA scans of 29 screens in light, dark, and high-contrast modes, an offline test, and layout checks at extra-large text on phones as narrow as 320 pixels.
+- **Tested before it deploys.** Render runs 41 content and logic tests on every build and won't publish if one fails. GitHub Actions also runs 20 end-to-end tests on two phone sizes. Those include axe-core WCAG 2.2 AA scans of 31 screens in light, dark, and high-contrast modes, an offline test, and layout checks at extra-large text on phones as narrow as 320 pixels.
 - **Link checking.** A monthly job checks every outside link and phone directory URL.
 
 ## Built for brain injury and other disabilities

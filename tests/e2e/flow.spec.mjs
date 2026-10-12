@@ -79,9 +79,11 @@ test('report a parking barrier, send the request, and record it', async ({ page 
   await expect(letter).toContainText('Table 208.2');
   await expect(letter).toContainText('at least 5 accessible spaces, including 1 van-accessible space');
   await expect(letter).toContainText('681.011(f-2)');
-  await expect(letter).toContainText('IRS Form 8826');
+  await expect(letter).toContainText('federal tax incentives may help (IRS Form 8826');
   await expect(letter).toContainText('Alex Rivera');
   await expect(page.getByRole('link', { name: 'Email it' })).toHaveAttribute('href', /^mailto:\?subject=Accessibility%20request/);
+  // Copy sits with the main buttons, not tucked under "More ways".
+  await expect(page.getByRole('button', { name: 'Copy the letter' })).toBeVisible();
 
   // Formal tone rewrites the letter.
   await page.getByText('Formal', { exact: true }).click();
@@ -99,6 +101,18 @@ test('report a parking barrier, send the request, and record it', async ({ page 
   await page.reload();
   await expect(page.locator('.next-title')).toHaveText('Wait for a reply');
   await expect(page.locator('.timeline')).toContainText('Asked the business');
+
+  // The letter that was sent can be reread exactly, and copied again.
+  await page.getByRole('link', { name: 'Read the letter you sent' }).click();
+  await expect(h1(page)).toHaveText('Request letter');
+  await expect(page.locator('.lede')).toContainText('Asked the business on');
+  await expect(page.locator('.letter-text')).toContainText('Sincerely,');
+  await expect(page.locator('.letter-text')).toContainText('Table 208.2');
+  await expect(page.getByRole('button', { name: 'Copy the letter' })).toBeVisible();
+  await page.getByRole('link', { name: /^Back to/ }).click();
+  await page.getByText('All steps and letters', { exact: true }).click();
+  await page.getByRole('link', { name: 'Request letter' }).click();
+  await expect(page.locator('.sent-note')).toContainText('Asked the business on');
   expect(errors).toEqual([]);
 });
 
@@ -218,12 +232,52 @@ test('photos can be saved to the phone from the case and the letter', async ({ p
   await expect(page.locator('.photo-grid img')).toHaveCount(1);
   for (let i = 0; i < 4; i += 1) await next(page);
   await page.getByTestId('wizard-next').click(); // save on review
-  await page.getByText('Your report', { exact: true }).click();
+
+  // The report page shows the photo without opening anything, and it opens full size.
+  await expect(page.getByRole('heading', { name: 'Your photo' })).toBeVisible();
+  await expect(page.locator('.photo-grid img')).toHaveCount(1);
   await expect(page.getByRole('button', { name: 'Save the photo to my phone' })).toBeVisible();
+  await page.locator('.photo-grid .thumb').first().click();
+  await expect(page.locator('dialog.viewer')).toBeVisible();
+  await page.locator('dialog.viewer').getByRole('button', { name: 'Close' }).click();
+
+  // The letter screen shows the same photo next to the send buttons.
   await page.getByRole('link', { name: 'Read your letter' }).click();
+  await expect(page.locator('.letter-photos img')).toHaveCount(1);
   await expect(page.locator('.photo-help')).toContainText('Email links can\'t carry photos');
   await page.getByText('More ways', { exact: true }).click();
   await expect(page.getByRole('button', { name: 'Save the photo to my phone' })).toBeVisible();
+});
+
+test('a photo that can\'t be added says why and what to do, and stays on screen', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('start-report').click();
+  await page.getByLabel('Business or place name').fill('Photo Problem Cafe');
+  await next(page);
+  await page.getByText('Spaces or aisles are often blocked').click();
+  await next(page); // details
+  await next(page); // photos
+  const chooser = page.locator('input[type=file][multiple]');
+
+  // A HEIC photo from an Android camera: Chrome can't open it.
+  await chooser.setInputFiles({ name: 'selfie.heic', mimeType: 'image/heic', buffer: Buffer.from('not a real photo') });
+  await expect(page.locator('.photo-problem')).toContainText('This photo couldn\'t be added');
+  await expect(page.locator('.photo-problem')).toContainText('HEIC');
+  await expect(page.locator('.photo-problem')).toContainText('Take a photo');
+
+  // A photo still in the cloud arrives empty.
+  await chooser.setInputFiles({ name: 'IMG_2041.jpg', mimeType: 'image/jpeg', buffer: Buffer.alloc(0) });
+  await expect(page.locator('.photo-problem')).toContainText('hasn\'t finished downloading');
+
+  // Two bad files at once get one message, then a good photo clears it.
+  await chooser.setInputFiles([
+    { name: 'a.heic', mimeType: 'image/heic', buffer: Buffer.from('x') },
+    { name: 'b.jpg', mimeType: 'image/jpeg', buffer: Buffer.from('not a jpeg') },
+  ]);
+  await expect(page.locator('.photo-problem')).toContainText('2 photos couldn\'t be added');
+  await chooser.setInputFiles(PHOTO);
+  await expect(page.locator('.photo-grid img')).toHaveCount(1);
+  await expect(page.locator('.photo-problem')).toBeEmpty();
 });
 
 test('picking a problem clears the error at once, and Next works on the first tap', async ({ page }) => {

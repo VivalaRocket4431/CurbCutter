@@ -12,6 +12,7 @@ import { renderCases } from './screens/cases.js';
 import { renderNewCase, renderWizard } from './screens/wizard.js';
 import { renderCase } from './screens/case.js';
 import { renderLetter } from './screens/letter.js';
+import { renderSent } from './screens/sent.js';
 import { renderShow } from './screens/show.js';
 import { renderRights, renderArticle } from './screens/rights.js';
 import { renderHelp } from './screens/help.js';
@@ -25,6 +26,7 @@ const ROUTES = [
   [/^\/case\/([\w-]+)$/, () => renderCase, ['id']],
   [/^\/case\/([\w-]+)\/step\/([\w-]+)$/, () => renderWizard, ['id', 'step']],
   [/^\/case\/([\w-]+)\/letter\/([\w-]+)$/, () => renderLetter, ['id', 'kind']],
+  [/^\/case\/([\w-]+)\/sent\/([\w-]+)$/, () => renderSent, ['id', 'event']],
   [/^\/case\/([\w-]+)\/show$/, () => renderShow, ['id']],
   [/^\/rights$/, () => renderRights],
   [/^\/rights\/([\w-]+)$/, () => renderArticle, ['article']],

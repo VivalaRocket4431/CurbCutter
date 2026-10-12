@@ -2,7 +2,7 @@
 // in light, dark, and high-contrast modes, plus a check that nothing scrolls sideways at XL text.
 import { test, expect } from '@playwright/test';
 import { createRequire } from 'node:module';
-import { seed, SAMPLE_CASE, noHorizontalScroll } from './helpers.mjs';
+import { seed, SAMPLE_CASE, SENT_CASE, noHorizontalScroll } from './helpers.mjs';
 
 const require = createRequire(import.meta.url);
 const AXE = require.resolve('axe-core/axe.min.js');
@@ -27,6 +27,8 @@ const SCREENS = [
   `/#/case/${SAMPLE_CASE.id}/letter/owner`,
   `/#/case/${SAMPLE_CASE.id}/letter/city`,
   `/#/case/${SAMPLE_CASE.id}/show`,
+  `/#/case/${SENT_CASE.id}`,
+  `/#/case/${SENT_CASE.id}/sent/ev_2`,
   '/#/rights',
   '/#/rights/parking-count',
   '/#/rights/who-enforces',
@@ -53,7 +55,7 @@ for (const mode of ['light', 'dark', 'high-contrast']) {
   test(`every screen passes axe in ${mode} mode`, async ({ page }) => {
     test.setTimeout(240_000);
     if (mode === 'dark') await page.emulateMedia({ colorScheme: 'dark' });
-    await seed(page, [SAMPLE_CASE], {
+    await seed(page, [SAMPLE_CASE, SENT_CASE], {
       profile: { name: 'Alex Rivera', who: 'self' },
       installDismissed: true,
       contrast: mode === 'high-contrast' ? 'high' : 'normal',
@@ -74,7 +76,7 @@ for (const mode of ['light', 'dark', 'high-contrast']) {
 test('nothing scrolls sideways at extra-large text', async ({ page }) => {
   test.setTimeout(240_000);
   await page.setViewportSize({ width: 360, height: 740 });
-  await seed(page, [SAMPLE_CASE], { profile: { name: 'Alex Rivera', who: 'self' }, installDismissed: true, textSize: 'xl' });
+  await seed(page, [SAMPLE_CASE, SENT_CASE], { profile: { name: 'Alex Rivera', who: 'self' }, installDismissed: true, textSize: 'xl' });
   for (const url of SCREENS) {
     await page.goto(url);
     await page.locator('h1').first().waitFor();

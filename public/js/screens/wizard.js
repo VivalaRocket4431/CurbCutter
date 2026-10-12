@@ -7,7 +7,7 @@ import { getSettings, saveSettings } from '../lib/settings.js';
 import { CATEGORIES, barrier, barriersIn, needsCalc, isCityOnly } from '../data/barriers.js';
 import { METROS, metroName } from '../data/contacts.js';
 import { TABLE_ROWS, FACILITY_TYPES, assessParking } from '../lib/parking.js';
-import { compressPhoto } from '../lib/photos.js';
+import { compressPhoto, photoProblemText } from '../lib/photos.js';
 import { currentPosition, metroFor, mapsLink } from '../lib/geo.js';
 import { requestText } from '../lib/letters.js';
 import { todayISO, longDate } from '../lib/dates.js';
@@ -302,6 +302,8 @@ function stepPhotos(c, api) {
   api.onCleanup(() => urls.forEach((u) => URL.revokeObjectURL(u)));
   const grid = h('ul', { class: 'photo-grid' });
   const status = h('p', { class: 'photo-status', role: 'status', 'aria-live': 'polite' });
+  // Problems stay on screen until the next try, so nobody has to catch a message that disappears.
+  const problemHost = h('div', { class: 'photo-problem' });
 
   const renderGrid = async () => {
     const photos = (await listPhotos(c.id)).filter((p) => c.photos.includes(p.id));
@@ -325,8 +327,10 @@ function stepPhotos(c, api) {
   const addFiles = async (files) => {
     const list = [...files].slice(0, 12);
     if (!list.length) return;
+    problemHost.replaceChildren();
     status.textContent = `Adding ${list.length === 1 ? 'photo' : `${list.length} photos`}...`;
     let added = 0;
+    const problems = [];
     for (const f of list) {
       try {
         const { blob, width, height } = await compressPhoto(f);
@@ -335,11 +339,18 @@ function stepPhotos(c, api) {
         api.update((x) => { x.photos = [...(x.photos || []), id]; });
         added += 1;
       } catch (e) {
-        toast(e.message || 'A photo could not be added.', { tone: 'bad' });
+        problems.push(photoProblemText(e));
       }
     }
     api.flush();
     if (added) toast(`${added === 1 ? 'Photo' : `${added} photos`} added.`, { tone: 'good' });
+    if (problems.length) {
+      problemHost.replaceChildren(notice({
+        tone: 'bad',
+        title: problems.length === 1 ? 'This photo couldn\'t be added' : `${problems.length} photos couldn't be added`,
+        body: [...new Set(problems)],
+      }));
+    }
     renderGrid();
   };
 
@@ -359,6 +370,7 @@ function stepPhotos(c, api) {
         fileButton('Take a photo', 'camera', { capture: 'environment' }),
         fileButton('Choose photos', 'image', { multiple: true }),
       ),
+      problemHost,
       status,
       grid,
       tips.length ? fold({ title: 'What to photograph' }, h('ul', { class: 'prose-list' }, tips.map((t) => h('li', null, t)))) : null,

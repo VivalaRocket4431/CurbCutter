@@ -29,6 +29,25 @@ export const SAMPLE_CASE = {
   askProfile: false,
 };
 
+// The same report after the request was marked as sent, with the exact letter saved on that day.
+export const SENT_CASE = {
+  ...SAMPLE_CASE,
+  id: 'case_sample0002',
+  place: { name: 'Elm Street Pharmacy', address: '1300 Elm St', city: 'Dallas', metro: 'dfw' },
+  events: [
+    { id: 'ev_1', type: 'documented', date: '2026-10-04' },
+    {
+      id: 'ev_2', type: 'asked', date: '2026-10-05', note: 'Emailed the store manager.',
+      letter: {
+        kind: 'request',
+        subject: 'Accessibility request for Elm Street Pharmacy, 1300 Elm St',
+        body: 'Hello,\n\nI\'m a customer with a disability, and I visited Elm Street Pharmacy on October 4, 2026.\n\nCould you let me know by October 19, 2026 what you plan to do?\n\nBest regards,\nAlex Rivera',
+      },
+    },
+  ],
+  nextCheck: '2026-10-19',
+};
+
 export async function seed(page, cases = [SAMPLE_CASE], settings = { profile: { name: 'Alex Rivera', who: 'self' }, installDismissed: true }) {
   await page.goto('/');
   await page.evaluate(async ({ cases, settings }) => {

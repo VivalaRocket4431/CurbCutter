@@ -470,6 +470,11 @@ details.explain ul { padding-left: 0; list-style: none; display: flex; flex-dire
 .photo-grid.small { grid-template-columns: repeat(auto-fill, minmax(min(100%, 6.5rem), 1fr)); }
 .photo-remove { display: inline-flex; align-items: center; justify-content: center; gap: 0.3rem; min-height: 2.75rem; background: transparent; border: 1.5px solid var(--line); border-radius: var(--radius-sm); color: var(--stop); font-weight: 700; cursor: pointer; }
 .photo-status { color: var(--ink-2); }
+.photo-problem:empty { display: none; }
+.letter-photos { display: grid; gap: 0.6rem; margin-top: 1rem; }
+.tl-link { margin-top: 0.25rem; }
+.sent-note { margin: 0.25rem 0 1rem; }
+.sent-screen .quick-send { margin-top: 1rem; }
 .thumb { padding: 0; border: 0; background: none; cursor: zoom-in; border-radius: var(--radius-sm); }
 
 .calc-result { background: var(--plate); border: 2px solid var(--sign); border-radius: var(--radius); padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
