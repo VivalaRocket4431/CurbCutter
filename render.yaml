@@ -1,0 +1,49 @@
+# Render Blueprint for CurbCutter: a free static site served from Render's global CDN.
+# In Render: New > Blueprint > pick this repository > Apply.
+services:
+  - type: web
+    runtime: static
+    name: curbcutter
+    branch: main
+    # The app's permanent, easy-to-share address. Render also adds www.curbcutter.org and sends it here.
+    # After Apply, add the DNS records in docs/DEPLOY.md (step 4) and click Verify in Render.
+    domains:
+      - curbcutter.org
+    # Keep this "enabled" until https://curbcutter.org works. Then change it to "disabled" so the app
+    # has exactly one address. Phones keep reports per web address, so two addresses would split them.
+    renderSubdomainPolicy: enabled
+    # 1. Runs the content and logic tests. If any fail, the build stops and the current site stays live.
+    # 2. Writes a fresh file list and version into sw.js so installed apps learn about updates.
+    buildCommand: npm run test:unit && node scripts/stamp-sw.mjs
+    staticPublishPath: ./public
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+    # Deploy on every push to main. After you add .github/workflows/ci.yml (see docs/DEPLOY.md),
+    # you can change this to checksPass so the full browser and accessibility tests also gate deploys.
+    autoDeployTrigger: commit
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: no-referrer
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: Permissions-Policy
+        value: geolocation=(self), camera=(self), microphone=(), payment=()
+      - path: /*
+        name: Strict-Transport-Security
+        value: max-age=31536000
+      - path: /*
+        name: Content-Security-Policy
+        value: "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'"
+      - path: /sw.js
+        name: Cache-Control
+        value: no-cache
+      - path: /index.html
+        name: Cache-Control
+        value: no-cache

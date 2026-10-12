@@ -1,0 +1,48 @@
+# Copy this file to .github/workflows/ci.yml in your GitHub repository (see docs/DEPLOY.md, step 2).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '17 14 1 * *' # 9:17 a.m. Central on the 1st of each month: check every outside link
+  workflow_dispatch:
+
+jobs:
+  test:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Stamp the service worker
+        run: node scripts/stamp-sw.mjs
+      - name: Unit tests (parking math, letters, escalation, content sources)
+        run: npm run test:unit
+      - name: End-to-end, accessibility (axe WCAG 2.2 AA), and offline tests
+        run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-results
+          path: test-results/
+          retention-days: 14
+
+  links:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check every phone directory and source link
+        run: node scripts/check-links.mjs

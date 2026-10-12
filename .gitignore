@@ -1,0 +1,17 @@
+node_modules/
+test-results/
+playwright-report/
+preview/
+Claude outputs/
+.DS_Store
+Thumbs.db
+
+# Private notes, passwords, and keys. This repository is public, so these never get uploaded.
+# Safer still: keep them in a password manager, not in this folder.
+WordPress Auth.txt
+*[Aa]uth*.txt
+*[Pp]assword*
+*[Ss]ecret*
+*[Cc]redential*
+.env
+.env.*
