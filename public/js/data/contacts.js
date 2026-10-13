@@ -432,6 +432,19 @@ export function metroName(id) {
   return METROS.find((m) => m.id === id)?.name || 'Texas';
 }
 
+// The four areas CurbCutter has local contacts for.
+export function isLocalMetro(id) {
+  return !!id && id !== 'other' && METROS.some((m) => m.id === id);
+}
+
+// What to call a report's area on screen: the metro area when CurbCutter has local contacts there,
+// otherwise the city the person typed, or nothing. "Somewhere else in Texas" is only a choice to pick,
+// never a label on someone's report.
+export function placeArea(place) {
+  if (isLocalMetro(place?.metro)) return metroName(place.metro);
+  return String(place?.city || '').trim();
+}
+
 export function localFor(metroId) {
   return LOCAL[metroId] || LOCAL.other;
 }

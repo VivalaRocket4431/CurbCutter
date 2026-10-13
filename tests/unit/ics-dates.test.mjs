@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { reminderICS, googleCalendarURL } from '../../public/js/lib/ics.js';
 import { addDays, daysBetween, longDate, relativeDays, isISODate } from '../../public/js/lib/dates.js';
 import { mailtoHref } from '../../public/js/lib/share.js';
-import { metroFor } from '../../public/js/lib/geo.js';
+import { metroFor, metroForCity, KNOWN_CITIES } from '../../public/js/lib/geo.js';
+import { placeArea, METROS } from '../../public/js/data/contacts.js';
 import { chunks } from '../../public/js/lib/speech.js';
 
 test('calendar file follows RFC 5545', () => {
@@ -55,4 +56,24 @@ test('read-aloud splits long text into short pieces', () => {
   const parts = chunks('One. Two two two. ' + 'Three is a much longer sentence that keeps going. '.repeat(10));
   assert.ok(parts.length > 1);
   for (const p of parts) assert.ok(p.length <= 220);
+});
+
+test('a city CurbCutter knows picks its area; any other city leaves it alone', () => {
+  assert.equal(metroForCity('Garland'), 'dfw');
+  assert.equal(metroForCity('  the woodlands '), 'houston');
+  assert.equal(metroForCity('New Braunfels'), 'sanantonio');
+  assert.equal(metroForCity('Round Rock'), 'austin');
+  assert.equal(metroForCity('Lubbock'), null);
+  assert.equal(metroForCity(''), null);
+  const areas = new Set(METROS.map((m) => m.id));
+  for (const [city, metro] of KNOWN_CITIES) assert.ok(areas.has(metro) && metro !== 'other', city);
+});
+
+test('a report is labeled with its area or its city, never "Somewhere else in Texas"', () => {
+  assert.equal(placeArea({ city: 'Dallas', metro: 'dfw' }), 'Dallas–Fort Worth');
+  assert.equal(placeArea({ city: '', metro: 'houston' }), 'Houston');
+  assert.equal(placeArea({ city: 'Lubbock', metro: 'other' }), 'Lubbock');
+  assert.equal(placeArea({ city: ' ', metro: 'other' }), '');
+  assert.equal(placeArea({ city: 'Amarillo', metro: '' }), 'Amarillo');
+  assert.equal(placeArea(undefined), '');
 });

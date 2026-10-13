@@ -5,10 +5,10 @@ import { button, field, textInput, textArea, choiceGroup, toast, notice, externa
 import { getCase, putCase, newId, putPhoto, listPhotos, deletePhoto } from '../lib/store.js';
 import { getSettings, saveSettings } from '../lib/settings.js';
 import { CATEGORIES, barrier, barriersIn, needsCalc, isCityOnly } from '../data/barriers.js';
-import { METROS, metroName } from '../data/contacts.js';
+import { METROS, metroName, isLocalMetro } from '../data/contacts.js';
 import { TABLE_ROWS, FACILITY_TYPES, assessParking } from '../lib/parking.js';
 import { compressPhoto, photoProblemText } from '../lib/photos.js';
-import { currentPosition, metroFor, mapsLink } from '../lib/geo.js';
+import { currentPosition, metroFor, metroForCity, mapsLink, KNOWN_CITIES } from '../lib/geo.js';
 import { requestText } from '../lib/letters.js';
 import { todayISO, longDate } from '../lib/dates.js';
 
@@ -127,9 +127,7 @@ function numberStepper({ id, value, onChange, min = 0, max = 99999 }) {
 
 function stepPlace(c, api) {
   const nameErr = api.errorFor('place-name');
-  const datalist = h('datalist', { id: 'city-options' },
-    ['Dallas', 'Fort Worth', 'Arlington', 'Plano', 'Irving', 'Garland', 'Frisco', 'McKinney', 'Denton', 'Rockwall', 'Houston', 'Pasadena', 'Sugar Land', 'Pearland', 'Katy', 'The Woodlands', 'Conroe', 'San Antonio', 'New Braunfels', 'Austin', 'Round Rock', 'Georgetown', 'Pflugerville', 'Cedar Park', 'San Marcos']
-      .map((x) => h('option', { value: x })));
+  const datalist = h('datalist', { id: 'city-options' }, KNOWN_CITIES.map(([city]) => h('option', { value: city })));
 
   const locStatus = h('div', { class: 'loc-status', role: 'status', 'aria-live': 'polite' });
   const showLoc = () => {
@@ -161,6 +159,43 @@ function stepPlace(c, api) {
     }
   });
 
+  const areaGroup = choiceGroup({
+    name: 'metro', legend: 'Which area is it in?',
+    options: METROS.map((m) => ({ value: m.id, label: m.name })),
+    value: c.place.metro || null,
+    columns: 2, variant: 'compact',
+    onChange: (v) => { api.update((x) => { x.place.metro = v; }); saveSettings({ metro: v }); },
+  });
+
+  // The city is optional, but it's what names the place in letters and on screen. So the first time
+  // someone moves on without one, CurbCutter asks for it once, kindly, and lets them skip it.
+  const cityNudge = c.place.cityAsked && !c.place.city.trim() && api.state.askingCity
+    ? h('div', { class: 'notice notice-info nudge', id: 'city-nudge' },
+      icon('pin'),
+      h('div', { class: 'notice-body' },
+        h('p', { class: 'notice-title', id: 'city-nudge-q' }, 'Which city is it in?'),
+        h('p', { id: 'city-nudge-why' }, 'The city goes in your letters, and it helps CurbCutter suggest the right local offices.'),
+        button({ label: 'Continue without the city', variant: 'quiet', onClick: () => api.next() }),
+      ))
+    : null;
+
+  const cityInput = textInput({
+    id: 'place-city', value: c.place.city, attrs: { list: 'city-options', autocapitalize: 'words' },
+    onInput: (v) => {
+      api.update((x) => { x.place.city = v; });
+      // A city CurbCutter knows picks its area, so the two always match.
+      const metro = metroForCity(v);
+      if (metro && metro !== c.place.metro) {
+        api.update((x) => { x.place.metro = metro; });
+        saveSettings({ metro });
+        const tile = areaGroup.querySelector(`input[value="${metro}"]`);
+        if (tile) tile.checked = true;
+      }
+      if (cityNudge) cityNudge.hidden = !!v.trim();
+    },
+  });
+  if (cityNudge) cityInput.setAttribute('aria-describedby', 'city-nudge-q city-nudge-why');
+
   const node = h('div', { class: 'stack' },
     field({
       id: 'place-name', label: 'Business or place name', hint: 'For example: Main Street Grocery', error: nameErr,
@@ -170,25 +205,24 @@ function stepPlace(c, api) {
       id: 'place-address', label: 'Street address or nearest corner', optional: true, hint: 'For example: 1200 Elm St, or Main St and 5th St',
       input: textInput({ id: 'place-address', value: c.place.address, onInput: (v) => api.update((x) => { x.place.address = v; }) }),
     }),
-    field({
-      id: 'place-city', label: 'City', optional: true,
-      input: textInput({ id: 'place-city', value: c.place.city, attrs: { list: 'city-options', autocapitalize: 'words' }, onInput: (v) => api.update((x) => { x.place.city = v; }) }),
-    }),
+    field({ id: 'place-city', label: 'City', optional: true, input: cityInput }),
+    cityNudge,
     datalist,
     h('div', { class: 'loc' }, locBtn, locStatus),
-    choiceGroup({
-      name: 'metro', legend: 'Which area is it in?',
-      options: METROS.map((m) => ({ value: m.id, label: m.name })),
-      value: c.place.metro || null,
-      columns: 2, variant: 'compact',
-      onChange: (v) => { api.update((x) => { x.place.metro = v; }); saveSettings({ metro: v }); },
-    }),
+    areaGroup,
   );
   return {
     node,
     validate: () => (!c.place.name.trim() && !c.place.address.trim()
       ? [{ id: 'place-name', message: 'Enter the business name or the address.' }]
       : []),
+    // Asked once per report. Returns the field to bring into view, or nothing to move on.
+    nudge: () => {
+      if (c.place.city.trim() || c.place.cityAsked) return null;
+      api.update((x) => { x.place.cityAsked = true; });
+      api.state.askingCity = true;
+      return 'place-city';
+    },
   };
 }
 
@@ -520,7 +554,7 @@ function stepReview(c) {
       h('p', { class: 'intro' }, 'Check that it looks right. Next, CurbCutter drafts your letter, and you can change any of it before you send it.'),
       reviewSection('Place', 'place', c,
         h('p', null, h('strong', null, c.place.name || 'No name'), c.place.address ? h('br') : null, c.place.address || null, c.place.city ? `, ${c.place.city}` : null),
-        h('p', { class: 'hint' }, metroName(c.place.metro)),
+        isLocalMetro(c.place.metro) ? h('p', { class: 'hint' }, metroName(c.place.metro)) : null,
       ),
       reviewSection('Problems', 'barriers', c,
         h('ul', { class: 'review-list' }, c.barriers.map((id) => h('li', null, barrier(id).title, c.notes?.[id] ? h('p', { class: 'hint' }, c.notes[id]) : null))),
@@ -589,6 +623,7 @@ export async function renderWizard(params, ctx) {
     errorFor(id) { return errors.find((e) => e.id === id)?.message || null; },
     onCleanup(fn) { cleanups.push(fn); },
     rerender(focusId) { renderStep(focusId); },
+    next() { return goNext(); },
   };
 
   const host = h('div', { class: 'step-host' });
@@ -622,6 +657,13 @@ export async function renderWizard(params, ctx) {
       renderStep();
       summaryHost.replaceChildren(errorSummary(errors));
       summaryHost.querySelector('.error-summary').focus();
+      return;
+    }
+    const ask = current.nudge ? current.nudge() : null;
+    if (ask) {
+      save.flush();
+      renderStep(ask);
+      document.getElementById(ask)?.scrollIntoView({ block: 'center' });
       return;
     }
     save.flush();

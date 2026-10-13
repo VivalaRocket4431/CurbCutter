@@ -7,7 +7,7 @@ import { nextStep, statusLabel, RUNGS, rungDone, has } from '../lib/ladder.js';
 import { EVENT_TYPES, withoutEvent } from '../lib/events.js';
 import { LETTER_KINDS, requestText, sentLinkLabel } from '../lib/letters.js';
 import { barrier } from '../data/barriers.js';
-import { metroName } from '../data/contacts.js';
+import { placeArea } from '../data/contacts.js';
 import { assessParking } from '../lib/parking.js';
 import { longDate, shortDate, relativeDays } from '../lib/dates.js';
 
@@ -157,7 +157,7 @@ export async function renderCase(params, ctx) {
 
   const node = h('div', { class: 'screen case' },
     h('header', { class: 'page-head' },
-      h('p', { class: 'eyebrow' }, statusChip(st), h('span', { class: 'eyebrow-meta' }, metroName(c.place?.metro))),
+      h('p', { class: 'eyebrow' }, statusChip(st), placeArea(c.place) ? h('span', { class: 'eyebrow-meta' }, placeArea(c.place)) : null),
       h('h1', { id: 'page-title', tabindex: '-1' }, c.place?.name || 'Your case'),
       h('p', { class: 'lede' }, [c.place?.address, c.place?.city].filter(Boolean).join(', ') || 'No address yet'),
     ),

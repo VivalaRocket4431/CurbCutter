@@ -88,7 +88,12 @@ function dojPanel() {
 function cityPanel(c) {
   const local = localFor(c.place?.metro);
   if (!local.cities.length) {
-    return notice({ tone: 'info', title: 'Find your city\'s 311', body: 'Search your city\'s name and "311" or "ADA coordinator." CurbCutter has local contacts for Dallas, Fort Worth, Houston, San Antonio, and Austin.' });
+    const city = (c.place?.city || '').trim();
+    return notice({
+      tone: 'info',
+      title: city ? `Find ${city}'s 311` : 'Find your city\'s 311',
+      body: `${city ? `Search "${city} 311" or "${city} ADA coordinator."` : 'Search your city\'s name and "311" or "ADA coordinator."'} CurbCutter has local contacts for Dallas, Fort Worth, Houston, San Antonio, and Austin.`,
+    });
   }
   return h('section', { class: 'panel', 'aria-labelledby': 'city-h' },
     h('h3', { id: 'city-h', class: 'panel-title' }, icon('building'), `Where to send it in the ${metroName(c.place?.metro)} area`),
@@ -102,7 +107,11 @@ function cityPanel(c) {
 
 function councilPanel(c) {
   const local = localFor(c.place?.metro);
-  if (!local.cities.length) return notice({ tone: 'info', title: 'Find your council member', body: 'Search your city\'s name and "find my council member."' });
+  if (!local.cities.length) {
+    // A council member represents where the person lives, so their own city comes first.
+    const city = (getSettings().profile?.city || c.place?.city || '').trim();
+    return notice({ tone: 'info', title: 'Find your council member', body: city ? `Search "${city} find my council member."` : 'Search your city\'s name and "find my council member."' });
+  }
   return h('section', { class: 'panel', 'aria-labelledby': 'council-h' },
     h('h3', { id: 'council-h', class: 'panel-title' }, icon('building'), 'Find your council member'),
     ...local.cities.map((city) => contactCard({ name: city.name, ...city.council }, { headingLevel: 4 })),

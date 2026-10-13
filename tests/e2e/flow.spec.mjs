@@ -223,6 +223,7 @@ test('photos can be saved to the phone from the case and the letter', async ({ p
   await page.goto('/');
   await page.getByTestId('start-report').click();
   await page.getByLabel('Business or place name').fill('Photo Test Market');
+  await page.getByLabel(/^City/).fill('Dallas');
   await next(page);
   await page.getByText('Spaces or aisles are often blocked').click();
   await next(page); // details
@@ -253,6 +254,7 @@ test('a photo that can\'t be added says why and what to do, and stays on screen'
   await page.goto('/');
   await page.getByTestId('start-report').click();
   await page.getByLabel('Business or place name').fill('Photo Problem Cafe');
+  await page.getByLabel(/^City/).fill('Dallas');
   await next(page);
   await page.getByText('Spaces or aisles are often blocked').click();
   await next(page); // details
@@ -284,6 +286,7 @@ test('picking a problem clears the error at once, and Next works on the first ta
   await page.goto('/');
   await page.getByTestId('start-report').tap();
   await page.getByLabel('Business or place name').fill('Tap Test Diner');
+  await page.getByLabel(/^City/).fill('Dallas');
   await page.getByTestId('wizard-next').tap();
   await expect(h1(page)).toHaveText('What\'s the problem?');
 
@@ -319,4 +322,68 @@ test('a report shows its progress as 4 numbered boxes, not a long row of steps',
   await page.goto(`/#/case/${SAMPLE_CASE.id}/step/review`);
   await expect(page.locator('.progress')).toHaveAttribute('aria-valuetext', 'Part 4 of 4');
   expect(await fills()).toEqual([1, 1, 1, 1]);
+});
+
+test('leaving the city blank gets one kind question, and typing the city answers it', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('start-report').click();
+  await page.getByLabel('Business or place name').fill('Prairie Diner');
+  await next(page);
+
+  // Same screen, a question rather than an error, with the cursor in the City box.
+  await expect(h1(page)).toHaveText('Where is it?');
+  await expect(page.locator('#city-nudge')).toContainText('Which city is it in?');
+  await expect(page.locator('.error-summary')).toHaveCount(0);
+  const city = page.getByLabel(/^City/);
+  await expect(city).toBeFocused();
+
+  await city.fill('Lubbock');
+  await expect(page.locator('#city-nudge')).toBeHidden();
+  await next(page);
+  await expect(h1(page)).toHaveText('What\'s the problem?');
+});
+
+test('the city can be skipped, and CurbCutter asks only once per report', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('start-report').click();
+  await page.getByLabel('Business or place name').fill('Roadside Market');
+  await next(page);
+  await page.getByRole('button', { name: 'Continue without the city' }).click();
+  await expect(h1(page)).toHaveText('What\'s the problem?');
+
+  await page.getByTestId('wizard-back').click();
+  await expect(h1(page)).toHaveText('Where is it?');
+  await expect(page.locator('#city-nudge')).toHaveCount(0);
+  await next(page);
+  await expect(h1(page)).toHaveText('What\'s the problem?');
+});
+
+test('a city CurbCutter knows picks its area', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('start-report').click();
+  await page.getByText('Somewhere else in Texas', { exact: true }).click();
+  await page.getByLabel(/^City/).fill('Pearland');
+  await expect(page.locator('input[name="metro"][value="houston"]')).toBeChecked();
+  await page.getByLabel(/^City/).fill('Lubbock'); // not one of the four areas: the choice stays as it was
+  await expect(page.locator('input[name="metro"][value="houston"]')).toBeChecked();
+});
+
+test('a report outside the four big areas shows its city, never "Somewhere else in Texas"', async ({ page }) => {
+  const lubbock = { ...SAMPLE_CASE, id: 'case_lubbock01', place: { name: 'Prairie Diner', address: '500 Broadway', city: 'Lubbock', metro: 'other' } };
+  const noCity = { ...SAMPLE_CASE, id: 'case_nocity001', place: { name: 'Roadside Market', address: '', city: '', metro: 'other' } };
+  await seed(page, [lubbock, noCity]);
+
+  await page.goto(`/#/case/${lubbock.id}`);
+  await expect(page.locator('.page-head .eyebrow')).toContainText('Lubbock');
+  await page.goto(`/#/case/${lubbock.id}/letter/city`);
+  await expect(page.locator('#main')).toContainText('Find Lubbock\'s 311');
+
+  for (const url of [
+    `/#/case/${lubbock.id}`, `/#/case/${lubbock.id}/step/review`, `/#/case/${lubbock.id}/letter/request`,
+    `/#/case/${noCity.id}`, `/#/case/${noCity.id}/step/review`,
+  ]) {
+    await page.goto(url);
+    await page.locator('h1').first().waitFor();
+    await expect(page.locator('#main'), url).not.toContainText('Somewhere else in Texas');
+  }
 });

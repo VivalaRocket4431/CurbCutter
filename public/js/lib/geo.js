@@ -1,4 +1,4 @@
-// Suggests the metro area from a location, entirely on the device (no map service involved).
+// Suggests the metro area from a location or a city name, entirely on the device (no map service involved).
 
 const CENTERS = [
   { metro: 'dfw', lat: 32.7767, lng: -96.797 }, // Dallas
@@ -51,4 +51,23 @@ export function currentPosition(timeout = 12000) {
 
 export function mapsLink({ lat, lng }) {
   return `https://maps.google.com/?q=${lat.toFixed(6)},${lng.toFixed(6)}`;
+}
+
+// Cities CurbCutter suggests as people type, with the metro area each one is in. Typing one of them
+// picks that area. Any other city is welcome too; it just leaves the area as the person chose it.
+export const KNOWN_CITIES = [
+  ['Dallas', 'dfw'], ['Fort Worth', 'dfw'], ['Arlington', 'dfw'], ['Plano', 'dfw'], ['Irving', 'dfw'],
+  ['Garland', 'dfw'], ['Frisco', 'dfw'], ['McKinney', 'dfw'], ['Denton', 'dfw'], ['Rockwall', 'dfw'],
+  ['Houston', 'houston'], ['Pasadena', 'houston'], ['Sugar Land', 'houston'], ['Pearland', 'houston'],
+  ['Katy', 'houston'], ['The Woodlands', 'houston'], ['Conroe', 'houston'],
+  ['San Antonio', 'sanantonio'], ['New Braunfels', 'sanantonio'],
+  ['Austin', 'austin'], ['Round Rock', 'austin'], ['Georgetown', 'austin'], ['Pflugerville', 'austin'],
+  ['Cedar Park', 'austin'], ['San Marcos', 'austin'],
+];
+
+export function metroForCity(name) {
+  const key = String(name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+  if (!key) return null;
+  const hit = KNOWN_CITIES.find(([city]) => city.toLowerCase() === key);
+  return hit ? hit[1] : null;
 }

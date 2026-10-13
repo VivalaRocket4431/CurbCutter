@@ -479,6 +479,9 @@ details.explain ul { padding-left: 0; list-style: none; display: flex; flex-dire
 .photo-status { color: var(--ink-2); }
 .photo-problem:empty { display: none; }
 .summary-host:empty { display: none; }
+/* The kind question under the City field: part of that field, not an error. */
+.nudge { margin-top: -0.5rem; }
+.nudge .btn-quiet { align-self: flex-start; margin-inline-start: -0.5rem; }
 .letter-photos { display: grid; gap: 0.6rem; margin-top: 1rem; }
 .tl-link { margin-top: 0.25rem; }
 .sent-note { margin: 0.25rem 0 1rem; }

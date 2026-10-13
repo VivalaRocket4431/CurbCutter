@@ -83,6 +83,15 @@ for (const mode of ['light', 'dark', 'high-contrast']) {
   });
 }
 
+test('the question about the city passes axe', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('start-report').click();
+  await page.getByLabel('Business or place name').fill('Prairie Diner');
+  await page.getByTestId('wizard-next').click();
+  await expect(page.locator('#city-nudge')).toBeVisible();
+  expect(await axe(page)).toEqual([]);
+});
+
 test('nothing scrolls sideways at extra-large text', async ({ page }) => {
   test.setTimeout(240_000);
   await page.setViewportSize({ width: 360, height: 740 });
