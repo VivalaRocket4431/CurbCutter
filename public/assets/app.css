@@ -439,10 +439,13 @@ details.explain ul { padding-left: 0; list-style: none; display: flex; flex-dire
 .wizard-top { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
 .wizard .eyebrow .stage { margin-left: 0.5rem; padding: 0.1rem 0.45rem; border-radius: 4px; background: var(--sign-soft); color: var(--ink); }
 .later { font-weight: 700; min-height: 2.75rem; display: inline-flex; align-items: center; }
-.progress { display: flex; gap: 0.3rem; }
-.progress-seg { flex: 1; height: 0.6rem; border-radius: 3px; background: var(--line); }
-.progress-seg.done { background: var(--sign); }
-.progress-seg.current { background: var(--hatch), var(--sign-soft); box-shadow: inset 0 0 0 1.5px var(--sign); }
+/* Report progress: 4 numbered boxes that fill left to right (see progressBoxes in wizard.js). */
+.progress { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; }
+.progress-box { display: grid; justify-items: center; gap: 0.2rem; }
+.progress-track { display: block; width: 100%; height: 0.85rem; border: 2px solid var(--sign); border-radius: 6px; background: var(--plate); overflow: hidden; }
+.progress-fill { display: block; height: 100%; width: 0; background: var(--sign); }
+.progress-num { font-weight: 800; font-size: 0.9rem; line-height: 1.1; color: var(--ink-2); }
+.progress-box.current .progress-num { color: var(--sign); }
 .autosave { display: flex; align-items: center; gap: 0.35rem; color: var(--ink-2); font-size: 0.88rem; }
 .autosave .icon { color: var(--go); }
 .wizard-actions {
@@ -734,7 +737,7 @@ details.fold[open] > summary > .icon { transform: rotate(90deg); }
 
 /* Wizard heading: the progress bar and one line under it. */
 .wizard-head { display: flex; flex-direction: column; gap: 0.45rem; }
-.wizard-meta { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; color: var(--ink-2); font-weight: 700; font-size: 0.92rem; }
+.wizard-meta { display: flex; justify-content: flex-end; align-items: center; gap: 0.75rem; flex-wrap: wrap; color: var(--ink-2); font-weight: 700; font-size: 0.92rem; }
 .wizard .step-host { padding-bottom: 0.5rem; }
 .pre { white-space: pre-line; }
 .note-line { display: flex; gap: 0.45rem; align-items: flex-start; color: var(--ink-2); font-size: 0.94rem; }

@@ -5,7 +5,7 @@
 // app uses it the next time it opens. Nobody is asked to update, and nothing reloads mid-report.
 
 // <stamp>
-const VERSION = 'curbcut-0df09ee40304';
+const VERSION = 'curbcut-61cd1d77c655';
 const FILES = [
   './',
   'assets/app.css',

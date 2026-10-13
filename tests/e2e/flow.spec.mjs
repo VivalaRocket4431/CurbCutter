@@ -300,3 +300,23 @@ test('picking a problem clears the error at once, and Next works on the first ta
   await expect(h1(page)).toHaveText('Add details');
   await expect(page.locator('.detail-block h2')).toHaveText(['Door is too heavy to open', 'Counter is too high']);
 });
+
+test('a report shows its progress as 4 numbered boxes, not a long row of steps', async ({ page }) => {
+  await seed(page); // the sample report has 8 screens, so each screen fills half a box
+  const fills = () => page.locator('.progress-fill').evaluateAll((els) => els.map((e) => Math.round((e.getBoundingClientRect().width / e.parentElement.clientWidth) * 100) / 100));
+
+  await page.goto(`/#/case/${SAMPLE_CASE.id}/step/place`);
+  await expect(page.locator('.progress-box')).toHaveCount(4);
+  await expect(page.locator('.progress-num')).toHaveText(['1', '2', '3', '4']);
+  await expect(page.locator('.progress')).toHaveAttribute('aria-valuetext', 'Part 1 of 4');
+  await expect(page.locator('.wizard-head')).not.toContainText(/step|of \d/i);
+  expect(await fills()).toEqual([0.5, 0, 0, 0]);
+
+  await page.goto(`/#/case/${SAMPLE_CASE.id}/step/details`);
+  await expect(page.locator('.progress')).toHaveAttribute('aria-valuetext', 'Part 2 of 4');
+  expect(await fills()).toEqual([1, 1, 0, 0]);
+
+  await page.goto(`/#/case/${SAMPLE_CASE.id}/step/review`);
+  await expect(page.locator('.progress')).toHaveAttribute('aria-valuetext', 'Part 4 of 4');
+  expect(await fills()).toEqual([1, 1, 1, 1]);
+});

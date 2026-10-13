@@ -28,10 +28,34 @@ export function activeSteps(c) {
   return STEPS.filter((s) => !s.when || s.when(c));
 }
 
+// The screen a draft stopped on, for "Continue: ..." on Home. No step counts: progress shows as 4 boxes.
 export function stepLabel(c) {
   const steps = activeSteps(c);
   const i = Math.max(0, steps.findIndex((s) => s.id === c.step));
-  return `step ${i + 1} of ${steps.length}, ${steps[i].title.toLowerCase().replace(/\?$/, '')}`;
+  return steps[i].title;
+}
+
+// Progress is always 4 numbered boxes, however many screens a report has. Each screen fills its share,
+// so with 8 screens every screen fills half a box. It shows progress only; it isn't a menu.
+const BOXES = 4;
+
+function progressBoxes(idx, total) {
+  const reached = (idx + 1) / total;
+  const filled = Math.round(reached * BOXES * 1000) / 1000;
+  const part = Math.min(BOXES, Math.max(1, Math.ceil(filled)));
+  return h('div', {
+    class: 'progress', role: 'progressbar', 'aria-label': 'Your progress',
+    'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(Math.round(reached * 100)),
+    'aria-valuetext': `Part ${part} of ${BOXES}`,
+  }, Array.from({ length: BOXES }, (_, i) => {
+    const share = Math.max(0, Math.min(1, filled - i));
+    const fill = h('span', { class: 'progress-fill' });
+    fill.style.width = `${share * 100}%`; // set through the style object, which the security policy allows
+    return h('span', { class: `progress-box${i + 1 === part ? ' current' : ''}` },
+      h('span', { class: 'progress-track' }, fill),
+      h('span', { class: 'progress-num', 'aria-hidden': 'true' }, String(i + 1)),
+    );
+  }));
 }
 
 export async function renderNewCase(params, ctx) {
@@ -590,9 +614,7 @@ export async function renderWizard(params, ctx) {
   idx = steps.findIndex((s) => s.id === step.id);
   const total = steps.length;
 
-  const progress = h('div', { class: 'progress', role: 'img', 'aria-label': `Step ${idx + 1} of ${total}` },
-    steps.map((s, i) => h('span', { class: `progress-seg${i < idx ? ' done' : ''}${i === idx ? ' current' : ''}` })),
-  );
+  const progress = progressBoxes(idx, total);
 
   const goNext = async () => {
     errors = current.validate ? current.validate() : [];
@@ -645,7 +667,7 @@ export async function renderWizard(params, ctx) {
   const node = h('div', { class: 'screen wizard' },
     h('div', { class: 'wizard-head' },
       progress,
-      h('p', { class: 'wizard-meta' }, h('span', null, `Step ${idx + 1} of ${total}`), later),
+      h('p', { class: 'wizard-meta' }, later),
     ),
     h('h1', { id: 'page-title', tabindex: '-1' }, step.title),
     idx === 0 && !editing ? h('p', { class: 'autosave' }, icon('check', { size: 16 }), 'Your answers save as you go.') : null,
@@ -655,7 +677,7 @@ export async function renderWizard(params, ctx) {
   );
 
   return {
-    title: `${step.title} (step ${idx + 1} of ${total})`,
+    title: step.title,
     node,
     hideNav: true,
     cleanup: () => { save.flush(); cleanups.forEach((fn) => fn()); },
