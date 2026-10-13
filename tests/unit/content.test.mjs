@@ -107,3 +107,12 @@ test('the privacy and support pages link only to files that exist', () => {
 test('the feedback address matches the one on the published pages', () => {
   assert.equal(APP.feedbackEmail, 'hello@curbcutter.org');
 });
+
+test('updates never ask people to do anything', () => {
+  const sw = readFileSync(path.join(PUBLIC, 'sw.js'), 'utf8');
+  const main = readFileSync(path.join(PUBLIC, 'js', 'main.js'), 'utf8');
+  // A new version takes over on its own as soon as it has downloaded...
+  assert.match(sw, /cache\.addAll\([\s\S]*?\)\)\)\s*\.then\(\(\) => self\.skipWaiting\(\)\)/);
+  // ...and the app never shows an update message or reloads while someone is working.
+  assert.doesNotMatch(main, /version of CurbCutter is ready|Update now|location\.reload/i);
+});

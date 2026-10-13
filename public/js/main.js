@@ -242,34 +242,11 @@ async function checkStorage() {
   }
 }
 
+// Updates are invisible. A new version downloads in the background and the app uses it the next time it
+// opens. People never see an update message or have to do anything, and nothing reloads while they work.
 function setupServiceWorker() {
   if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
-  let userAskedToUpdate = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (userAskedToUpdate) location.reload();
-  });
-  const offer = (worker) => {
-    if (document.getElementById('update-banner')) return;
-    const btn = button({ label: 'Update now', variant: 'primary', iconName: 'download' });
-    btn.addEventListener('click', () => {
-      userAskedToUpdate = true;
-      worker.postMessage('SKIP_WAITING');
-    });
-    showBanner(h('div', { class: 'banner banner-info', id: 'update-banner' },
-      icon('info'),
-      h('p', null, 'A new version of CurbCutter is ready. Your reports are safe.'),
-      btn,
-    ));
-  };
   navigator.serviceWorker.register('sw.js').then((reg) => {
-    if (reg.waiting && navigator.serviceWorker.controller) offer(reg.waiting);
-    reg.addEventListener('updatefound', () => {
-      const nw = reg.installing;
-      if (!nw) return;
-      nw.addEventListener('statechange', () => {
-        if (nw.state === 'installed' && navigator.serviceWorker.controller) offer(nw);
-      });
-    });
     setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000);
   }).catch(() => {
     /* offline support unavailable here; the app still works online */

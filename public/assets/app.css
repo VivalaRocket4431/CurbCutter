@@ -680,10 +680,11 @@ html[data-text-size="xl"] .tabbar a span { font-size: 0.72rem; }
 
 /* ---------- Wider screens ---------- */
 @media (min-width: 48rem) {
-  main { padding-block: 2rem 3rem; }
-  .hero { padding: 2.6rem 2rem 2rem; }
-  .hero h1 { font-size: 2.8rem; }
-  .wizard-actions { margin-inline: 0; border: 1px solid var(--line); border-radius: var(--radius); bottom: 0.75rem; }
+  /* :where() adds no specificity, so these rules weigh exactly what they did before. */
+  :where(:root:not(.phone-fit)) main { padding-block: 2rem 3rem; }
+  :where(:root:not(.phone-fit)) .hero { padding: 2.6rem 2rem 2rem; }
+  :where(:root:not(.phone-fit)) .hero h1 { font-size: 2.8rem; }
+  :where(:root:not(.phone-fit)) .wizard-actions { margin-inline: 0; border: 1px solid var(--line); border-radius: var(--radius); bottom: 0.75rem; }
 }
 
 /* ---------- Calm building blocks: fewer boxes, one thing at a time ---------- */
@@ -764,6 +765,20 @@ a.appbar-btn { text-decoration: none; }
 .links-row a { display: inline-flex; align-items: center; min-height: 2.75rem; font-weight: 700; }
 
 /* ---------- Print: only the letter ---------- */
+/* ---------- A phone showing its "desktop site" view (see js/fit.js) ----------
+   fit.js zooms the page back to phone size and sets --fit-zoom. Viewport units grow with the zoom,
+   so they're divided back here, and the narrow-phone rules from the media queries above apply by class. */
+.phone-fit body { min-height: calc(100vh / var(--fit-zoom, 1)); }
+.phone-fit .brand-name { font-size: clamp(1.05rem, calc(5.5vw / var(--fit-zoom, 1)), 1.3rem); }
+.phone-fit .toasts { width: min(calc(92vw / var(--fit-zoom, 1)), 30rem); }
+.phone-fit dialog.viewer { max-width: calc(96vw / var(--fit-zoom, 1)); }
+.phone-fit dialog.viewer img { max-height: calc(75vh / var(--fit-zoom, 1)); }
+.fit-w480[data-text-size="l"] .appbar-btn-label, .fit-w480[data-text-size="xl"] .appbar-btn-label,
+.fit-w352 .appbar-btn-label {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+.fit-w480[data-text-size="l"] .appbar-btn, .fit-w480[data-text-size="xl"] .appbar-btn, .fit-w352 .appbar-btn { padding-inline: 0.55rem; }
+
 @media print {
   html.printing body * { visibility: hidden !important; }
   html.printing .print-target, html.printing .print-target * { visibility: visible !important; }

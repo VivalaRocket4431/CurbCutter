@@ -73,7 +73,7 @@ If you cancel the WordPress plan at Porkbun later, check these DNS records again
 2. In GitHub Desktop: write a short summary, click **Commit to main**, then **Push origin**.
 3. Render runs the content and logic tests and deploys only if they pass. If they fail, the live site stays as it was. If you set up step 3, GitHub runs the full test suite at the same time and emails you if anything fails.
    - Optional, stricter: in `render.yaml`, change `autoDeployTrigger: commit` to `autoDeployTrigger: checksPass`. Render will then wait for the full GitHub suite to pass before deploying. Only do this after step 3, because Render won't deploy at all if a commit has no GitHub checks.
-4. People who installed CurbCutter see "A new version of CurbCutter is ready" the next time they open it.
+4. Phones download the new version in the background and use it the next time CurbCutter opens. Nobody sees an update message or has to do anything.
 
 ## If something goes wrong
 
