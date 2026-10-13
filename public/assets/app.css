@@ -131,6 +131,8 @@
 
 /* Text size follows the person's own browser setting and scales from it. */
 html { font-size: 112.5%; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+/* Keeps a focused field or button from landing behind the bar pinned to the bottom of the screen. */
+html { scroll-padding-block: 1rem 6rem; }
 html[data-text-size="l"] { font-size: 131.25%; }
 html[data-text-size="xl"] { font-size: 150%; }
 
@@ -264,7 +266,9 @@ body.has-tabbar main { padding-bottom: calc(6.5rem + env(safe-area-inset-bottom,
   padding: 2.1rem 1.25rem 1.35rem; display: flex; flex-direction: column; gap: 0.75rem; box-shadow: var(--shadow);
 }
 .hero-lane { position: absolute; inset: 0 0 auto 0; height: 0.8rem; background: var(--hatch); opacity: 0.9; }
-.hero h1 { font-size: 2.3rem; }
+/* On phones the headline matches other page titles and shrinks with the screen, so it always fits on
+   two lines, at any text size. Wide screens get the bigger size in the media query below. */
+.hero h1 { font-size: min(1.85rem, 8vw); }
 .hero .btn-primary { margin-top: 0.4rem; min-height: 3.5rem; font-size: 1.1rem; }
 
 .trust {
@@ -474,6 +478,7 @@ details.explain ul { padding-left: 0; list-style: none; display: flex; flex-dire
 .photo-remove { display: inline-flex; align-items: center; justify-content: center; gap: 0.3rem; min-height: 2.75rem; background: transparent; border: 1.5px solid var(--line); border-radius: var(--radius-sm); color: var(--stop); font-weight: 700; cursor: pointer; }
 .photo-status { color: var(--ink-2); }
 .photo-problem:empty { display: none; }
+.summary-host:empty { display: none; }
 .letter-photos { display: grid; gap: 0.6rem; margin-top: 1rem; }
 .tl-link { margin-top: 0.25rem; }
 .sent-note { margin: 0.25rem 0 1rem; }
@@ -773,6 +778,7 @@ a.appbar-btn { text-decoration: none; }
    so they're divided back here, and the narrow-phone rules from the media queries above apply by class. */
 .phone-fit body { min-height: calc(100vh / var(--fit-zoom, 1)); }
 .phone-fit .brand-name { font-size: clamp(1.05rem, calc(5.5vw / var(--fit-zoom, 1)), 1.3rem); }
+.phone-fit .hero h1 { font-size: min(1.85rem, calc(8vw / var(--fit-zoom, 1))); }
 .phone-fit .toasts { width: min(calc(92vw / var(--fit-zoom, 1)), 30rem); }
 .phone-fit dialog.viewer { max-width: calc(96vw / var(--fit-zoom, 1)); }
 .phone-fit dialog.viewer img { max-height: calc(75vh / var(--fit-zoom, 1)); }

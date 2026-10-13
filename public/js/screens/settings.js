@@ -39,7 +39,7 @@ export async function renderSettings(params, ctx) {
       value: s.speechRate,
       onChange: (v) => { saveSettings({ speechRate: Number(v) }); speak('This is how fast I will read.', Number(v)); },
     }) : null,
-    button({ label: 'Reset display settings', iconName: 'left', variant: 'quiet', onClick: () => { resetSettings(); toast('Display settings reset.'); ctx.refresh(); } }),
+    button({ label: 'Reset display settings', variant: 'quiet', onClick: () => { resetSettings(); toast('Display settings reset.'); ctx.refresh(); } }),
   );
 
   const profile = fold({ title: 'Your info for letters', sub: 'Your name and how businesses can reach you.' },

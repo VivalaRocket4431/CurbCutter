@@ -42,7 +42,6 @@ export async function renderAbout() {
       h('h2', null, 'Credits'),
       h('p', null, 'Text is set in Atkinson Hyperlegible Next, designed by the Braille Institute for readers with low vision, and Overpass, inspired by U.S. highway signs. Both are free under the SIL Open Font License.'),
       APP.feedbackEmail ? h('p', null, 'Questions, corrections, or a success story? ', h('a', { href: `mailto:${APP.feedbackEmail}` }, APP.feedbackEmail)) : null,
-      h('p', { class: 'fine' }, `Version ${APP.version}.`),
     ),
   );
   return { title: 'About', node };

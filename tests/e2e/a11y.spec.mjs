@@ -46,8 +46,18 @@ const SCREENS = [
 async function axe(page) {
   await page.addScriptTag({ path: AXE });
   return page.evaluate(async () => {
-    const r = await window.axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] } });
-    return r.violations.map((v) => `${v.id} (${v.impact}): ${v.help} -> ${v.nodes.slice(0, 3).map((n) => n.target.join(' ')).join(' | ')}`);
+    const list = (r) => r.violations.map((v) => `${v.id} (${v.impact}): ${v.help} -> ${v.nodes.slice(0, 3).map((n) => n.target.join(' ')).join(' | ')}`);
+    const tags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
+    const all = await window.axe.run(document, { runOnly: { type: 'tag', values: tags }, rules: { 'target-size': { enabled: false } } });
+    // Target size is measured with the bottom bars in the page flow. Pinned to the bottom of the screen,
+    // they cover whatever happens to be scrolled under them right now, and axe would count that
+    // against those buttons even though scrolling brings them into view.
+    const unpin = document.createElement('style');
+    unpin.textContent = '.wizard-actions, .tabbar { position: static !important; }';
+    document.head.append(unpin);
+    const size = await window.axe.run(document, { runOnly: { type: 'rule', values: ['target-size'] } });
+    unpin.remove();
+    return [...list(all), ...list(size)];
   });
 }
 
@@ -115,4 +125,23 @@ test('route changes move focus to the new heading', async ({ page }) => {
   await page.getByRole('link', { name: 'Rights & help', exact: true }).click();
   await expect(page.locator('h1')).toBeFocused();
   await expect(page).toHaveTitle('Rights & help | CurbCutter');
+});
+
+test('the home headline fits on two lines on small phones, at every text size', async ({ page }) => {
+  for (const width of [320, 360, 412]) {
+    await page.setViewportSize({ width, height: 800 });
+    for (const textSize of ['m', 'l', 'xl']) {
+      await seed(page, [], { installDismissed: true, textSize });
+      const h1 = page.locator('.hero h1');
+      await h1.waitFor();
+      const r = await h1.evaluate((el) => {
+        const cs = getComputedStyle(el);
+        return { lines: Math.round(el.getBoundingClientRect().height / parseFloat(cs.lineHeight)), size: parseFloat(cs.fontSize) };
+      });
+      const where = `${width}px wide, text size ${textSize}`;
+      expect(r.lines, `${where}: headline lines`).toBeLessThanOrEqual(2);
+      expect(r.size, `${where}: headline no bigger than 8% of the screen width`).toBeLessThanOrEqual(width * 0.08 + 0.5);
+      await noHorizontalScroll(page);
+    }
+  }
 });

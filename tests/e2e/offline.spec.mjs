@@ -29,7 +29,7 @@ test('the service worker caches every app file', async ({ page }) => {
   await page.evaluate(() => navigator.serviceWorker.ready);
   const missing = await page.evaluate(async () => {
     const keys = await caches.keys();
-    const cache = await caches.open(keys.find((k) => k.startsWith('curbcut-')));
+    const cache = await caches.open(keys.find((k) => /^curbcut-[0-9a-f]{12}$/.test(k)));
     const wanted = ['index.html', 'js/main.js', 'js/screens/wizard.js', 'assets/app.css', 'assets/fonts/overpass-latin-800-normal.woff2', 'manifest.webmanifest'];
     const out = [];
     for (const f of wanted) if (!(await cache.match(f))) out.push(f);

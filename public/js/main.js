@@ -1,4 +1,4 @@
-// CurbCutter app shell: routing, focus management, read-aloud, updates, and install prompts.
+// CurbCutter app shell: routing, focus management, read-aloud, offline support, and install prompts.
 
 import { h, clear, icon } from './ui/dom.js';
 import { setToastRegion, toast, button } from './ui/components.js';
@@ -242,8 +242,10 @@ async function checkStorage() {
   }
 }
 
-// Updates are invisible. A new version downloads in the background and the app uses it the next time it
-// opens. People never see an update message or have to do anything, and nothing reloads while they work.
+// The service worker (sw.js) keeps a copy of CurbCutter on the phone for times with no signal, and opens
+// the current CurbCutter whenever there's a connection. People never see an update message or have to do
+// anything, and nothing reloads while they work. The hourly check just keeps the phone's copy fresh when
+// CurbCutter stays open for a long time.
 function setupServiceWorker() {
   if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
   navigator.serviceWorker.register('sw.js').then((reg) => {

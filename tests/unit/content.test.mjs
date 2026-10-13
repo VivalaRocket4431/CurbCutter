@@ -108,11 +108,25 @@ test('the feedback address matches the one on the published pages', () => {
   assert.equal(APP.feedbackEmail, 'hello@curbcutter.org');
 });
 
-test('updates never ask people to do anything', () => {
+test('people always get the current CurbCutter and are never asked to update', () => {
   const sw = readFileSync(path.join(PUBLIC, 'sw.js'), 'utf8');
   const main = readFileSync(path.join(PUBLIC, 'js', 'main.js'), 'utf8');
-  // A new version takes over on its own as soon as it has downloaded...
+  const stamp = readFileSync(path.join(PUBLIC, '..', 'scripts', 'stamp-sw.mjs'), 'utf8');
+  // Every time CurbCutter opens, the service worker asks curbcutter.org (never the browser's cache)
+  // whether the copy on the phone is current, and opens curbcutter.org itself when it isn't.
+  assert.match(sw, /async function currentVersion\(\) \{\s*const res = await fetch\(self\.location\.href, \{ cache: 'no-cache' \}\);/);
+  assert.match(sw, /async function openPage[\s\S]*?if \(\(await within\(WAIT_MS, currentVersion\(\)\)\) !== VERSION\) \{\s*const live = await within\(WAIT_MS, fetch\(event\.request, \{ cache: 'no-cache' \}\)\);/);
+  // The question is answered by the VERSION line that the deploy writes.
+  assert.ok(sw.includes(`/const VERSION = '([^']+)'/.exec(`));
+  assert.ok(stamp.includes("`// <stamp>\\nconst VERSION = '${version}';"));
+  // A new copy takes over on its own as soon as it has downloaded...
   assert.match(sw, /cache\.addAll\([\s\S]*?\)\)\)\s*\.then\(\(\) => self\.skipWaiting\(\)\)/);
   // ...and the app never shows an update message or reloads while someone is working.
   assert.doesNotMatch(main, /version of CurbCutter is ready|Update now|location\.reload/i);
+  // The service worker reloads a page only to replace one from the earlier design: once per phone,
+  // or when someone taps that design's old button.
+  const navigations = sw.match(/\.navigate\(/g) || [];
+  assert.equal(navigations.length, 2);
+  assert.match(sw, /if \(!earlierDesign\) return;[\s\S]*?\.navigate\(/);
+  assert.match(sw, /if \(event\.data !== 'SKIP_WAITING'\) return;[\s\S]*?\.navigate\(/);
 });

@@ -592,7 +592,7 @@ export async function renderWizard(params, ctx) {
   };
 
   const host = h('div', { class: 'step-host' });
-  const summaryHost = h('div');
+  const summaryHost = h('div', { class: 'summary-host' });
   let current = null;
 
   function clearErrors() {

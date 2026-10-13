@@ -25,10 +25,10 @@ It covers the Dallas–Fort Worth, Houston, San Antonio, and Austin areas with c
 ## Why it keeps working
 
 - **No server, no account, no database to go down.** It's a static site. Reports live on the person's phone (IndexedDB), with backup and restore.
-- **Works offline.** A service worker keeps the whole app on the device, so it works in a parking garage with no signal.
+- **Works offline.** A service worker keeps a complete copy of the app on the phone, so it works in a parking garage with no signal.
 - **Readable in any phone browser.** If a phone's browser is set to show desktop sites, which shrinks every page onto the small screen, CurbCutter notices and zooms itself back to phone size. Nobody has to find a browser setting.
-- **Invisible updates.** Each deploy stamps a new version. Phones download it in the background and use it the next time CurbCutter opens, so nobody has to update anything and nothing reloads in the middle of a report.
-- **Tested before it deploys.** Render runs 42 content and logic tests on every build and won't publish if one fails. GitHub Actions also runs 24 end-to-end tests on two phone sizes. Those include axe-core WCAG 2.2 AA scans of 31 screens in light, dark, and high-contrast modes, an offline test, and layout checks at extra-large text on phones as narrow as 320 pixels.
+- **Always current.** Each time CurbCutter opens, the service worker asks curbcutter.org (one small request) whether the copy on the phone is the current one. If the site has changed, CurbCutter opens straight from the site, and the phone saves the new copy in the background. With no signal, or no answer within 3 seconds, it opens from the copy on the phone. Nobody is ever asked to update, and nothing reloads in the middle of a report.
+- **Tested before it deploys.** Render runs 42 content and logic tests on every build and won't publish if one fails. GitHub Actions also runs 32 end-to-end tests on two phone sizes. Those include axe-core WCAG 2.2 AA scans of 31 screens in light, dark, and high-contrast modes, offline and always-current checks, and layout checks at extra-large text on phones as narrow as 320 pixels.
 - **Link checking.** A monthly job checks every outside link and phone directory URL.
 
 ## Built for brain injury and other disabilities

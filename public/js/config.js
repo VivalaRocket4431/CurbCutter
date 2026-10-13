@@ -7,7 +7,6 @@
 export const APP = {
   name: 'CurbCutter',
   tagline: 'Speak up for access in Texas',
-  version: '0.1.0',
   // Receives feedback, wrong-number reports, and success stories (forwarded by Porkbun).
   // Leave empty to hide those buttons.
   feedbackEmail: 'hello@curbcutter.org',
