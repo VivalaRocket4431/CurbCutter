@@ -130,3 +130,26 @@ test('people always get the current CurbCutter and are never asked to update', (
   assert.match(sw, /if \(!earlierDesign\) return;[\s\S]*?\.navigate\(/);
   assert.match(sw, /if \(event\.data !== 'SKIP_WAITING'\) return;[\s\S]*?\.navigate\(/);
 });
+
+// Reads a PNG's size and whether it has transparency, straight from its header.
+function pngInfo(file) {
+  const b = readFileSync(file);
+  assert.equal(b.toString('latin1', 1, 4), 'PNG', `${file} is not a PNG`);
+  return { width: b.readUInt32BE(16), height: b.readUInt32BE(20), alpha: b[25] === 4 || b[25] === 6 };
+}
+
+test('every app icon exists at the size it claims, and home-screen icons have no see-through corners', () => {
+  const manifest = JSON.parse(readFileSync(path.join(PUBLIC, 'manifest.webmanifest'), 'utf8'));
+  for (const icon of manifest.icons) {
+    const file = path.join(PUBLIC, icon.src);
+    assert.ok(existsSync(file), `${icon.src} is missing`);
+    const { width, height, alpha } = pngInfo(file);
+    assert.equal(`${width}x${height}`, icon.sizes, icon.src);
+    // Phones crop maskable icons to their own shape, so they must fill the whole square.
+    if (icon.purpose === 'maskable') assert.equal(alpha, false, `${icon.src} must be opaque`);
+  }
+  // iPhones turn transparent pixels black, so the Home Screen icon must be opaque too.
+  const apple = pngInfo(path.join(PUBLIC, 'assets', 'icons', 'apple-touch-icon.png'));
+  assert.deepEqual(apple, { width: 180, height: 180, alpha: false });
+  assert.deepEqual(pngInfo(path.join(PUBLIC, 'assets', 'icons', 'favicon-32.png')).width, 32);
+});

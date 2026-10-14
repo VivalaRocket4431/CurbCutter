@@ -13,7 +13,7 @@
 // by hand. VERSION is a fingerprint of every file in FILES, so the same VERSION means identical files.
 
 // <stamp>
-const VERSION = 'curbcut-980d7c2a9031';
+const VERSION = 'curbcut-063437245f1f';
 const FILES = [
   './',
   'assets/app.css',

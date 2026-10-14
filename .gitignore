@@ -15,3 +15,8 @@ WordPress Auth.txt
 *[Cc]redential*
 .env
 .env.*
+
+# The logo artwork lives in design/. These copies were saved into the website folder while working
+# on it; ignoring them keeps a 1 MB file and the design notes out of what phones download.
+public/assets/icons/CurbCutter512Icon.png
+public/assets/icons/CurbCutterLogoPrompt.txt

@@ -193,8 +193,7 @@ h1:focus, main:focus, [tabindex="-1"]:focus { outline: none; }
 }
 .brand-mark { width: 2rem; height: 2rem; flex: none; }
 .brand-ramp { fill: var(--bar-ink); }
-.brand-curb { stroke: var(--paint); stroke-width: 2.4; fill: none; }
-.brand-hatch { stroke: var(--paint); stroke-width: 1.7; stroke-linecap: round; fill: none; }
+.brand-paint { fill: var(--paint); }
 .appbar :focus-visible { outline-color: var(--paint); }
 .appbar-btn {
   display: inline-flex; align-items: center; gap: 0.4rem; min-height: 2.75rem; padding: 0.35rem 0.8rem; flex: none; white-space: nowrap;
