@@ -167,22 +167,26 @@ const ctx = {
 };
 
 function brandMark() {
-  // CurbCutter's mark: a curb ramp, with a Wi-Fi signal drawn as steps. The app takes the steps that
-  // get real steps turned into a curb cut. Shapes match the app icon (assets/icons/favicon.svg).
+  // CurbCutter's mark: a gold path cut through a curb, rising from the street to the sidewalk. The faint
+  // triangle is the part of the curb that was cut away. Shapes match the app icon (assets/icons/favicon.svg).
   const ns = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(ns, 'svg');
-  svg.setAttribute('viewBox', '160.5 342 936 936');
+  svg.setAttribute('viewBox', '0 0 512 512');
   svg.setAttribute('width', '32');
   svg.setAttribute('height', '32');
   svg.setAttribute('aria-hidden', 'true');
   svg.classList.add('brand-mark');
-  const ramp = document.createElementNS(ns, 'path');
-  ramp.setAttribute('d', 'M198 961H480L756 649H1059V1037H198Z');
-  ramp.setAttribute('class', 'brand-ramp');
-  const paint = document.createElementNS(ns, 'path');
-  paint.setAttribute('d', 'M756 600H1059V690H756ZM364 583H599V764H533V644H364ZM275 684H490V863H424V745H275ZM275 805H356V885H275Z');
-  paint.setAttribute('class', 'brand-paint');
-  svg.append(ramp, paint);
+  const shape = (d, cls) => {
+    const p = document.createElementNS(ns, 'path');
+    p.setAttribute('d', d);
+    p.setAttribute('class', cls);
+    return p;
+  };
+  svg.append(
+    shape('M384 150H128V392Z', 'brand-ghost'),
+    shape('M512 150H384L128 392V512H512Z', 'brand-ramp'),
+    shape('M384 150L128 392H0V438H171L427 196H512V150Z', 'brand-paint'),
+  );
   return svg;
 }
 

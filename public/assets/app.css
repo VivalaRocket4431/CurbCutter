@@ -194,6 +194,7 @@ h1:focus, main:focus, [tabindex="-1"]:focus { outline: none; }
 .brand-mark { width: 2rem; height: 2rem; flex: none; }
 .brand-ramp { fill: var(--bar-ink); }
 .brand-paint { fill: var(--paint); }
+.brand-ghost { fill: var(--bar-ink); opacity: 0.18; }
 .appbar :focus-visible { outline-color: var(--paint); }
 .appbar-btn {
   display: inline-flex; align-items: center; gap: 0.4rem; min-height: 2.75rem; padding: 0.35rem 0.8rem; flex: none; white-space: nowrap;
