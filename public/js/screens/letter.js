@@ -123,7 +123,7 @@ function newsPanel(c) {
   const outlets = [...local.news, ...STATEWIDE.news];
   return h('section', { class: 'panel', 'aria-labelledby': 'news-h' },
     h('h3', { id: 'news-h', class: 'panel-title' }, icon('megaphone'), 'Newsrooms that take tips'),
-    h('p', null, 'Send to one or two at a time. Consumer and investigations teams are a good fit. ', h('a', { href: '#/rights/media' }, 'Tips for working with reporters')),
+    h('p', null, 'Send to one or two at a time. Consumer and investigations teams are a good fit. Tap a newsroom\'s email address to open your letter already addressed to it. ', h('a', { href: '#/rights/media' }, 'Tips for working with reporters')),
     ...outlets.map((o) => contactCard(o, { headingLevel: 4 })),
   );
 }
@@ -268,6 +268,7 @@ export async function renderLetter(params, ctx) {
       btns.push(copy(canShareText() ? 'secondary' : 'primary'));
     }
     sendHost.replaceChildren(...btns);
+    paintContactEmails();
 
     more.push(
       savePhotosButton(c),
@@ -275,6 +276,21 @@ export async function renderLetter(params, ctx) {
       button({ label: 'Download as a text file', iconName: 'download', variant: 'secondary', onClick: () => downloadText(`${letter.subject}\n\n${letter.body}\n`, `${safeFilename(c.place?.name)}-${kind}.txt`), attrs: { 'data-needs-app': '' } }),
     );
     moreHost.replaceChildren(...more.filter(Boolean));
+  }
+
+  // Email addresses in the contact cards (newsrooms, 311, ADA coordinators) open this letter, already
+  // addressed, and fill in "Send to" so the Email it button goes to the same place.
+  let contactEmails = [];
+  function paintContactEmails() {
+    for (const a of contactEmails) a.href = mailtoHref({ to: a.dataset.address, subject: letter.subject, body: letter.body });
+  }
+  async function useAddress(address) {
+    if (!toInput) return;
+    toInput.value = address;
+    c.recipients = { ...(c.recipients || {}), [recipientKey]: address };
+    if (recipientKey === 'business') c.contact = { ...(c.contact || {}), email: address };
+    paintActions();
+    await putCase(c);
   }
 
   function paint() {
@@ -296,7 +312,7 @@ export async function renderLetter(params, ctx) {
         paintActions();
       },
     });
-    const hint = kind === 'news' ? 'One newsroom email at a time works best.' : kind === 'council' ? 'Use the links above to find your council member\'s email.' : kind === 'city' ? 'Or call 311 and read the report aloud.' : 'No email address? Print it and mail or hand-deliver it.';
+    const hint = kind === 'news' ? 'Tap a newsroom\'s email above to fill this in, or type one. One newsroom at a time works best.' : kind === 'council' ? 'Use the links above to find your council member\'s email.' : kind === 'city' ? 'Or call 311 and read the report aloud.' : 'No email address? Print it and mail or hand-deliver it.';
     recipientField = field({ id: 'to', label: 'Send to (email address)', optional: true, hint, input: toInput });
   }
 
@@ -339,6 +355,15 @@ export async function renderLetter(params, ctx) {
     news: newsPanel(c),
     script: scriptPanel(c),
   }[kind] || null;
+
+  if (where && EMAILABLE.has(kind)) {
+    contactEmails = [...where.querySelectorAll('a[href^="mailto:"]')];
+    for (const a of contactEmails) {
+      a.dataset.address = a.textContent.trim();
+      a.setAttribute('aria-label', `Email your ${noun} to ${a.dataset.address}`);
+      a.addEventListener('click', () => { useAddress(a.dataset.address); });
+    }
+  }
 
   // Photos in plain view, so people can check what goes with the letter.
   const viewer = photoViewer();

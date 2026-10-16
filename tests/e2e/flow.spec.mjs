@@ -143,6 +143,27 @@ test('owner letter shows where to look up the property owner', async ({ page }) 
   await expect(page.getByRole('link', { name: /Dallas Central Appraisal District/ })).toBeVisible();
 });
 
+test('tapping a newsroom email opens the letter addressed to that newsroom', async ({ page }) => {
+  await seed(page);
+  await page.goto(`/#/case/${SAMPLE_CASE.id}/letter/news`);
+  await expect(h1(page)).toHaveText('News tip');
+  // Keep the test browser from leaving for an email app.
+  await page.evaluate(() => document.addEventListener('click', (e) => { if (e.target.closest('a[href^="mailto:"]')) e.preventDefault(); }, true));
+
+  const newsroom = page.locator('.contact-email', { hasText: 'NewsTips@nbcdfw.com' });
+  const href = await newsroom.getAttribute('href');
+  expect(href).toMatch(/^mailto:NewsTips@nbcdfw\.com\?subject=.+&body=.+/);
+  expect(decodeURIComponent(href)).toContain('Main Street Grocery');
+
+  await newsroom.click();
+  await expect(page.locator('#to')).toHaveValue('NewsTips@nbcdfw.com');
+  await expect(page.getByRole('link', { name: 'Email it' })).toHaveAttribute('href', /^mailto:NewsTips@nbcdfw\.com\?subject=/);
+
+  // The address is remembered for this report.
+  await page.reload();
+  await expect(page.locator('#to')).toHaveValue('NewsTips@nbcdfw.com');
+});
+
 test('marking it fixed celebrates and suggests a thank-you', async ({ page }) => {
   await seed(page);
   await page.goto(`/#/case/${SAMPLE_CASE.id}`);
