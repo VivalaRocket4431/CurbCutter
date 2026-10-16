@@ -131,6 +131,8 @@
 
 /* Text size follows the person's own browser setting and scales from it. */
 html { font-size: 112.5%; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+/* No double-tap zoom: a quick second tap on Next or Save must never blow the page up. Pinch zoom still works. */
+html { touch-action: manipulation; }
 /* Keeps a focused field or button from landing behind the bar pinned to the bottom of the screen. */
 html { scroll-padding-block: 1rem 6rem; }
 html[data-text-size="l"] { font-size: 131.25%; }

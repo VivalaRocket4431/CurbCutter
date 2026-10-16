@@ -45,6 +45,27 @@ test.describe('a phone showing its desktop-site view', () => {
       await noHorizontalScroll(page);
     }
   });
+  test('keeps the same size when the browser widens the page or zooms in by itself', async ({ page }) => {
+    await seed(page, [SAMPLE_CASE]);
+    await page.goto(`/#/case/${SAMPLE_CASE.id}/step/review`);
+    await page.locator('h1').first().waitFor();
+    const before = await fitState(page);
+    expect(before.fit).toBe(true);
+    // The browser widening the page, then narrowing its view as a zoom-in does. The phone's screen stays the same.
+    const cdp = await page.context().newCDPSession(page);
+    for (const width of [1400, 2400, 600, 980]) {
+      await cdp.send('Emulation.setDeviceMetricsOverride', { width, height: 2122, deviceScaleFactor: 1, mobile: false, screenWidth: 412, screenHeight: 892 });
+      await page.waitForTimeout(100);
+      const s = await fitState(page);
+      expect(s.zoom, `page ${width} wide`).toBeCloseTo(before.zoom, 3);
+      expect(s.fit).toBe(true);
+    }
+  });
+
+  test('turns off double-tap zoom so a quick second tap never blows the page up', async ({ page }) => {
+    await page.goto('/');
+    expect(await page.evaluate(() => getComputedStyle(document.documentElement).touchAction)).toBe('manipulation');
+  });
 });
 
 test.describe('a phone in its normal view', () => {
