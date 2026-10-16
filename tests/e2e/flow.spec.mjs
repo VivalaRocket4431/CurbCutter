@@ -143,6 +143,31 @@ test('owner letter shows where to look up the property owner', async ({ page }) 
   await expect(page.getByRole('link', { name: /Dallas Central Appraisal District/ })).toBeVisible();
 });
 
+test('"I\'m not sure who" shows ways to find the business\'s email', async ({ page }) => {
+  await seed(page);
+  await page.goto(`/#/case/${SAMPLE_CASE.id}/letter/request`);
+  const toggle = page.getByRole('button', { name: 'I\'m not sure who' });
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('#who-help')).toBeHidden();
+
+  // The button sits beside the hint, not under it.
+  const hint = await page.locator('#to-hint').boundingBox();
+  const btn = await toggle.boundingBox();
+  expect(btn.x).toBeGreaterThan(hint.x + hint.width - 1);
+
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('#who-help')).toBeVisible();
+  await expect(page.locator('#who-help')).toContainText('Ask an employee');
+  await toggle.click();
+  await expect(page.locator('#who-help')).toBeHidden();
+
+  // Letters to people other than the business don't need it.
+  await page.goto(`/#/case/${SAMPLE_CASE.id}/letter/news`);
+  await expect(page.locator('#to')).toBeVisible();
+  await expect(page.getByTestId('who-toggle')).toHaveCount(0);
+});
+
 test('tapping a newsroom email opens the letter addressed to that newsroom', async ({ page }) => {
   await seed(page);
   await page.goto(`/#/case/${SAMPLE_CASE.id}/letter/news`);

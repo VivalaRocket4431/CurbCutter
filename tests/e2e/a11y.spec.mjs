@@ -75,6 +75,9 @@ for (const mode of ['light', 'dark', 'high-contrast']) {
       await page.goto(url);
       await page.locator('h1').first().waitFor();
       await page.waitForTimeout(150);
+      // Check the "I'm not sure who" tips open, too.
+      const who = page.getByTestId('who-toggle');
+      if (await who.count()) await who.click();
       for (const v of await axe(page)) problems.push(`${url}: ${v}`);
       const stray = await page.evaluate(() => document.body.innerText.match(/\b(null|undefined|NaN)\b|\[object Object\]/)?.[0]);
       if (stray) problems.push(`${url}: shows the word "${stray}"`);

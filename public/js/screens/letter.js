@@ -128,6 +128,38 @@ function newsPanel(c) {
   );
 }
 
+// "I'm not sure who": ways to find the business's email, opened from a button beside the hint.
+function whoToSendTo(field) {
+  const hint = field.querySelector('.hint');
+  if (!hint) return field;
+  const panel = h('section', { id: 'who-help', class: 'panel who-help', 'aria-labelledby': 'who-help-h', hidden: '' },
+    h('h3', { id: 'who-help-h', class: 'panel-title' }, icon('mail'), 'Finding the right email'),
+    h('ul', { class: 'check-list' },
+      h('li', null, 'Ask an employee, in person or by phone: "What\'s the best email to reach the manager or owner about an accessibility request?"'),
+      h('li', null, 'Look on the business\'s website for a "Contact us" page. Its Google Maps listing may link to the website.'),
+      h('li', null, 'Check your receipt. Many list a website, phone number, or company address.'),
+      h('li', null, 'For a chain store, use the company\'s "Contact us" page or customer service, and ask them to pass your letter to the store manager.'),
+      h('li', null, 'Still no email? Print the letter and hand it to a manager, or mail it. Keep a copy for yourself.'),
+    ),
+  );
+  const toggle = button({
+    label: 'I\'m not sure who',
+    variant: 'secondary',
+    attrs: { class: 'btn btn-secondary btn-small', 'aria-expanded': 'false', 'aria-controls': 'who-help', 'data-testid': 'who-toggle' },
+    onClick: () => {
+      const open = panel.hidden;
+      panel.hidden = !open;
+      toggle.setAttribute('aria-expanded', String(open));
+      if (open) panel.querySelector('h3')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    },
+  });
+  const row = h('div', { class: 'hint-row' });
+  hint.replaceWith(row);
+  row.append(hint, toggle);
+  row.after(panel);
+  return field;
+}
+
 function scriptPanel(c) {
   return h('div', { class: 'btn-col' },
     button({ label: 'Show this to staff', href: `#/case/${c.id}/show`, variant: 'primary', iconName: 'eye' }),
@@ -314,6 +346,7 @@ export async function renderLetter(params, ctx) {
     });
     const hint = kind === 'news' ? 'Tap a newsroom\'s email above to fill this in, or type one. One newsroom at a time works best.' : kind === 'council' ? 'Use the links above to find your council member\'s email.' : kind === 'city' ? 'Or call 311 and read the report aloud.' : 'No email address? Print it and mail or hand-deliver it.';
     recipientField = field({ id: 'to', label: 'Send to (email address)', optional: true, hint, input: toInput });
+    if (BUSINESS_KINDS.has(kind)) whoToSendTo(recipientField);
   }
 
   // Tone only applies to the first request.
